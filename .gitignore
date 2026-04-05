@@ -18,6 +18,11 @@ Makefile
 # Case outputs (generated at runtime)
 cases/*/output/
 cases/*/output_long/
+cases/*/output_backup/
+cases/*/reload/
+cases/*/restart/
+cases/*/*.log
+build_test/
 
 # IDE / editor
 .vscode/
@@ -34,3 +39,5 @@ tasks/
 design/
 .gitnexus
 **/.claude/
+CLAUDE.md
+AGENTS.md
