@@ -12,7 +12,7 @@
 | GCC / Clang | C++20（GCC 10+，Clang 12+）| 编译器 |
 | [Eigen3](https://eigen.tuxfamily.org) | ≥ 3.4 | 向量/矩阵运算（仅头文件） |
 | [TBB](https://github.com/oneapi-src/oneTBB) | ≥ 2021 | 并行任务调度 |
-| [Boost](https://www.boost.org) | ≥ 1.74（仅头文件）| 多边形几何域构造 |
+| [Boost](https://www.boost.org) | ≥ 1.74（仅头文件）| 多边形几何域构造（`MultiPolygonShape`，必须）|
 
 ### 系统包管理器安装（有 root 权限）
 
@@ -58,7 +58,7 @@ tar -xzf boost_1_82_0.tar.gz
 
 ---
 
-## 编译
+## Linux 编译
 
 ### 第一步：配置（cmake -S ... -B ...）
 
@@ -80,12 +80,14 @@ ROOT_DIR=$HOME/eulerian-SPH   # 本仓库根目录
 BUILD_DIR=$ROOT_DIR/build     # 构建输出目录
 DEPS=$HOME/deps               # 依赖库安装根目录
 
+# *_DIR 变量指向各依赖的 cmake 配置文件所在目录（含 *Config.cmake）
+# BOOST_ROOT 指向 Boost 解压根目录（含 include/boost/）
 cmake -S "$ROOT_DIR" -B "$BUILD_DIR" \
   -Wno-dev \
   -DCMAKE_BUILD_TYPE=Release \
-  -DEigen3_DIR=$DEPS/eigen3/share/eigen3/cmake \  # Eigen3 的 cmake 配置文件目录
-  -DTBB_DIR=$DEPS/tbb/lib64/cmake/TBB \           # TBB 的 cmake 配置文件目录
-  -DBOOST_ROOT=$DEPS/boost_1_82_0                 # Boost 根目录（含 include/）
+  -DEigen3_DIR=$DEPS/eigen3/share/eigen3/cmake \
+  -DTBB_DIR=$DEPS/tbb/lib64/cmake/TBB \
+  -DBOOST_ROOT=$DEPS/boost_1_82_0
 ```
 
 ### 第二步：编译（cmake --build --target）
@@ -112,6 +114,54 @@ build/cases/2d_eulerian_taylor_green_LG/bin/2d_eulerian_taylor_green_LG
 build/cases/2d_eulerian_flow_around_cylinder_LG/bin/2d_eulerian_flow_around_cylinder_LG
 build/cases/2d_eulerian_supersonic_flow_around_cylinder/bin/2d_eulerian_supersonic_flow_around_cylinder
 ```
+
+---
+
+## Windows 编译（vcpkg）
+
+Windows 下推荐用 [vcpkg](https://github.com/microsoft/vcpkg) 管理依赖，需先安装 Visual Studio 2022（含 C++ 桌面开发组件）。
+
+**第一步：用 vcpkg 安装依赖**
+
+```powershell
+# 安装三个依赖（x64-windows）
+cd D:\path\to\vcpkg   # 替换为你的 vcpkg 根目录
+.\vcpkg install eigen3 tbb boost --triplet x64-windows
+```
+
+**第二步：配置**
+
+```powershell
+# VCPKG_ROOT 替换为你的 vcpkg 安装路径，例如 D:\code\vcpkg
+cmake -S . -B build `
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+  -DVCPKG_TARGET_TRIPLET=x64-windows `
+  -DTBB_DIR="$VCPKG_ROOT/installed/x64-windows/share/tbb" `
+  -DBOOST_ROOT="$VCPKG_ROOT/installed/x64-windows"
+```
+
+**第三步：编译**
+
+```powershell
+# 编译单个算例
+cmake --build build --target 2d_eulerian_taylor_green_LG         --config Release
+cmake --build build --target 2d_eulerian_flow_around_cylinder_LG --config Release
+cmake --build build --target 2d_eulerian_supersonic_flow_around_cylinder --config Release
+
+# 或编译全部
+cmake --build build --config Release
+```
+
+**第四步：运行**
+
+```powershell
+# 切换到 case 源目录后执行，output 将写入当前目录
+cd cases\2d_eulerian_taylor_green_LG
+..\..\build\cases\2d_eulerian_taylor_green_LG\bin\Release\2d_eulerian_taylor_green_LG.exe
+```
+
+> **注意**：MSVC 多配置生成器会在 `bin\` 下再建 `Release\` 子目录，完整路径为  
+> `build/cases/<case_name>/bin/Release/<case_name>.exe`
 
 ---
 
