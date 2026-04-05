@@ -193,6 +193,7 @@ int main(int ac, char *av[])
     //----------------------------------------------------------------------
     BodyStatesRecordingToVtp write_real_body_states(sph_system);
     write_real_body_states.addToWrite<int>(water_block, "Indicator");
+    write_real_body_states.addToWrite<Vecd>(water_block, "Velocity");
     RegressionTestDynamicTimeWarping<ReducedQuantityRecording<QuantitySummation<Vecd>>>
         write_total_viscous_force_from_fluid(cylinder, "ViscousForceFromFluid");
     ReducedQuantityRecording<QuantitySummation<Vecd>>
@@ -218,8 +219,8 @@ int main(int ac, char *av[])
     Real &physical_time = *sph_system.getSystemVariableDataByName<Real>("PhysicalTime");
     size_t number_of_iterations = 0;
     int screen_output_interval = 1000;
-    Real end_time = 80.0;
-    Real output_interval = 5.0; /**< time stamps for output. */
+    Real end_time = 200.0;
+    Real output_interval = 1.0; /**< time stamps for output. */
     //----------------------------------------------------------------------
     //	Statistics for CPU time
     //----------------------------------------------------------------------
