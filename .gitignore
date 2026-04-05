@@ -1,0 +1,34 @@
+# Build artifacts
+build/
+cmake-build-*/
+*.exe
+*.dll
+*.lib
+*.a
+*.so
+*.o
+*.obj
+
+# CMake cache
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Case outputs (generated at runtime)
+cases/*/output/
+cases/*/output_long/
+
+# IDE / editor
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Temporary planning files (not part of the solver library)
+findings.md
+progress.md
+sphinxsys_alignment_todo.md
+task_plan.md
+tasks/
+design/
