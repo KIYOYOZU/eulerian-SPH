@@ -44,7 +44,7 @@
 #include <CL/sycl.hpp>
 #define SYCL_DEVICE_ONLY
 #else
-#include <atomic>
+#include <boost/atomic/atomic_ref.hpp>
 #endif // SPHINXSYS_USE_SYCL
 
 #include <Eigen/Cholesky>
@@ -63,7 +63,7 @@ using AtomicRef = sycl::atomic_ref<
 namespace math = sycl;
 #else
 template <typename T>
-using AtomicRef = std::atomic_ref<T>;
+using AtomicRef = boost::atomic_ref<T>;
 namespace math = std;
 #endif // SPHINXSYS_USE_SYCL
 

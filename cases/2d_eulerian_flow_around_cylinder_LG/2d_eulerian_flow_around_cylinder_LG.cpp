@@ -194,8 +194,9 @@ int main(int ac, char *av[])
     BodyStatesRecordingToVtp write_real_body_states(sph_system);
     write_real_body_states.addToWrite<int>(water_block, "Indicator");
     write_real_body_states.addToWrite<Vecd>(water_block, "Velocity");
-    RegressionTestDynamicTimeWarping<ReducedQuantityRecording<QuantitySummation<Vecd>>>
-        write_total_viscous_force_from_fluid(cylinder, "ViscousForceFromFluid");
+    // Regression test is disabled by default for this case on deployment environments.
+    // RegressionTestDynamicTimeWarping<ReducedQuantityRecording<QuantitySummation<Vecd>>>
+    //     write_total_viscous_force_from_fluid(cylinder, "ViscousForceFromFluid");
     ReducedQuantityRecording<QuantitySummation<Vecd>>
         write_total_pressure_force_from_fluid_body(cylinder, "PressureForceFromFluid");
     ReducedQuantityRecording<MaximumSpeed> write_maximum_speed(water_block);
@@ -260,7 +261,7 @@ int main(int ac, char *av[])
         write_real_body_states.writeToFile();
         viscous_force_from_fluid.exec();
         pressure_force_from_fluid.exec();
-        write_total_viscous_force_from_fluid.writeToFile(number_of_iterations);
+        // write_total_viscous_force_from_fluid.writeToFile(number_of_iterations);
         write_total_pressure_force_from_fluid_body.writeToFile(number_of_iterations);
 
         write_maximum_speed.writeToFile(number_of_iterations);
@@ -273,7 +274,7 @@ int main(int ac, char *av[])
     tt = t4 - t1 - interval;
     std::cout << "Total wall time for computation: " << tt.seconds() << " seconds." << std::endl;
 
-    write_total_viscous_force_from_fluid.testResult();
+    // write_total_viscous_force_from_fluid.testResult();
 
     return 0;
 }

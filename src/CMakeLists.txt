@@ -63,6 +63,11 @@ target_link_libraries(sphinxsys_2d PUBLIC
     tinyxml2_embedded
 )
 
+if(TARGET Boost::program_options)
+    target_compile_definitions(sphinxsys_2d PUBLIC BOOST_AVAILABLE)
+    target_link_libraries(sphinxsys_2d PUBLIC Boost::program_options)
+endif()
+
 # 编译选项
 target_compile_features(sphinxsys_2d PUBLIC cxx_std_20)
 if(MSVC)
