@@ -4,6 +4,134 @@
 
 ---
 
+## Docker 快速开始
+
+如果希望在一台新的 Linux 电脑上快速部署本项目，同时避免宿主机依赖冲突，推荐使用 Docker 作为“依赖环境容器”。本项目代码保存在宿主机本地目录，Docker 只负责提供隔离好的编译和运行依赖；后续修改本地代码后，可以直接在容器内重新编译运行，无需重新安装宿主机依赖。
+
+### 1. 删除旧目录并重新克隆仓库
+
+以下命令示例假定项目统一放在 `/home/DataBank/SPH_solver/eulerian-SPH`。如果该目录已经存在旧版本仓库，先删除后重新克隆。下面使用实际仓库地址 `https://github.com/KIYOYOZU/eulerian-SPH`。
+
+```bash
+mkdir -p /home/DataBank/SPH_solver
+cd /home/DataBank/SPH_solver
+rm -rf /home/DataBank/SPH_solver/eulerian-SPH
+git clone https://github.com/KIYOYOZU/eulerian-SPH eulerian-SPH
+cd /home/DataBank/SPH_solver/eulerian-SPH
+```
+
+### 2. 构建 Docker 镜像
+
+在仓库根目录执行：
+
+```bash
+docker build -t eulerian-sph:latest .
+```
+
+镜像构建完成后，容器内会具备以下依赖环境：
+
+- `cmake`
+- `g++ / build-essential`
+- `Eigen3`
+- `TBB`
+- `Boost::geometry`
+- `Boost::program_options`
+- `Ninja`
+
+### 3. 启动开发容器
+
+推荐将宿主机本地仓库整体挂载到容器内，这样容器里的编译目录和运行输出会直接落在本地仓库中，本地改代码后也能立即重新编译。这里 Docker 只提供依赖环境，不保存开发中的源码状态。
+
+```bash
+cd /home/DataBank/SPH_solver/eulerian-SPH
+
+docker run --rm -it \
+  -v "$PWD":/workspace \
+  -e ROOT_DIR=/workspace \
+  -e BUILD_DIR=/workspace/build \
+  --entrypoint bash \
+  eulerian-sph:latest
+```
+
+进入容器后，项目根目录对应为：
+
+```bash
+/workspace
+```
+
+这样容器内构建产生的文件会直接落在宿主机本地仓库：
+
+- `/home/DataBank/SPH_solver/eulerian-SPH/build`
+- `/home/DataBank/SPH_solver/eulerian-SPH/cases/2d_eulerian_flow_around_cylinder_LG/output`
+
+### 4. 在容器内编译并运行某个 case
+
+以圆柱绕流算例为例，在容器内执行：
+
+```bash
+cd /workspace
+
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+cmake --build build --target 2d_eulerian_flow_around_cylinder_LG --parallel 8
+
+cd /workspace/cases/2d_eulerian_flow_around_cylinder_LG
+
+/workspace/build/cases/2d_eulerian_flow_around_cylinder_LG/bin/2d_eulerian_flow_around_cylinder_LG
+```
+
+上面这些命令虽然是在 Docker 容器里执行，但由于 `/home/DataBank/SPH_solver/eulerian-SPH` 已经挂载到容器内的 `/workspace`，因此结果会直接保存在宿主机本地：
+
+- 编译结果：`/home/DataBank/SPH_solver/eulerian-SPH/build`
+- 运行输出：`/home/DataBank/SPH_solver/eulerian-SPH/cases/2d_eulerian_flow_around_cylinder_LG/output`
+- 其他运行目录：`reload/`、`restart/`、`logs/` 也会保存在对应本地 case 目录下
+
+如果之后在宿主机修改了 `src/`、`cases/` 或 `CMakeLists.txt`，只需要回到容器内重新执行：
+
+```bash
+cd /workspace
+cmake --build build --target 2d_eulerian_flow_around_cylinder_LG --parallel 8
+```
+
+如果改动了 CMake 配置或新增源文件，推荐重新执行：
+
+```bash
+cd /workspace
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target 2d_eulerian_flow_around_cylinder_LG --parallel 8
+```
+
+### 5. 粒子松弛与重载运行
+
+圆柱绕流算例如果要先做粒子松弛，再加载松弛结果正式运行，可在容器内或通过 `docker run` 传参执行。
+
+在已经进入容器的前提下，粒子松弛运行：
+
+```bash
+/workspace/build/cases/2d_eulerian_flow_around_cylinder_LG/bin/2d_eulerian_flow_around_cylinder_LG --relax=true
+```
+
+加载松弛结果继续运行：
+
+```bash
+/workspace/build/cases/2d_eulerian_flow_around_cylinder_LG/bin/2d_eulerian_flow_around_cylinder_LG --reload=true
+```
+
+### 6. 常用环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `ROOT_DIR` | `/opt/eulerian-SPH` | 项目根目录，可改成挂载进去的源码目录 |
+| `BUILD_DIR` | `$ROOT_DIR/build` | Docker 内使用的构建目录 |
+| `BUILD_TYPE` | `Release` | CMake 构建类型 |
+| `BUILD_JOBS` | `nproc` | 并行编译线程数 |
+| `FORCE_CONFIGURE` | `0` | 设为 `1` 时强制重新执行 CMake 配置 |
+| `CONFIGURE_ONLY` | `0` | 设为 `1` 时只配置不编译、不运行 |
+| `SKIP_BUILD` | `0` | 设为 `1` 时跳过编译，仅运行已有二进制 |
+| `RUN_ARGS` | 空 | 用环境变量传递简单运行参数 |
+
+---
+
 ## 依赖
 
 | 依赖 | 版本要求 | 说明 |
@@ -12,16 +140,16 @@
 | GCC / Clang | C++20（GCC 10+，Clang 12+）| 编译器 |
 | [Eigen3](https://eigen.tuxfamily.org) | ≥ 3.4 | 向量/矩阵运算（仅头文件） |
 | [TBB](https://github.com/oneapi-src/oneTBB) | ≥ 2021 | 并行任务调度 |
-| [Boost](https://www.boost.org) | ≥ 1.74（仅头文件）| 多边形几何域构造（`MultiPolygonShape`，必须）|
+| [Boost](https://www.boost.org) | ≥ 1.74 | 多边形几何域构造与命令行选项解析（`geometry` + `program_options`，必须） |
 
 ### 系统包管理器安装（有 root 权限）
 
 ```bash
 # Ubuntu / Debian
-sudo apt install cmake g++ libeigen3-dev libtbb-dev libboost-dev
+sudo apt install cmake g++ libeigen3-dev libtbb-dev libboost-dev libboost-program-options-dev
 
 # CentOS / RHEL
-sudo dnf install cmake gcc-c++ eigen3-devel tbb-devel boost-devel
+sudo dnf install cmake gcc-c++ eigen3-devel tbb-devel boost-devel boost-program-options
 ```
 
 ### 超算 / 无 root 环境（手动编译安装）
@@ -189,22 +317,6 @@ cd cases/2d_eulerian_supersonic_flow_around_cylinder
 ```
 
 结果写入 `output/`（VTP 格式），可用 [ParaView](https://www.paraview.org) 打开。
-
-### 粒子松弛（仅圆柱算例）
-
-对于含固体边界的算例，初次运行前可先执行粒子松弛，生成贴体粒子分布以提升精度：
-
-```bash
-cd cases/2d_eulerian_flow_around_cylinder_LG
-
-# 第一步：松弛运行，生成贴体粒子坐标，结果写入 reload/
-../../build/cases/2d_eulerian_flow_around_cylinder_LG/bin/2d_eulerian_flow_around_cylinder_LG --r=true
-
-# 第二步：正式仿真，从 reload/ 加载松弛后的粒子分布
-../../build/cases/2d_eulerian_flow_around_cylinder_LG/bin/2d_eulerian_flow_around_cylinder_LG --reload=true
-```
-
----
 
 ## 算例说明
 

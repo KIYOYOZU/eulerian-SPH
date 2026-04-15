@@ -32,10 +32,8 @@
 
 #define TBB_PREVIEW_GLOBAL_CONTROL 1
 #include <tbb/global_control.h>
-#ifdef BOOST_AVAILABLE
 #include "boost/program_options.hpp"
 namespace po = boost::program_options;
-#endif
 
 #include "all_bodies.h"
 #include "base_data_type_package.h"
@@ -64,9 +62,7 @@ class SPHSystem
               size_t number_of_threads = std::thread::hardware_concurrency());
     virtual ~SPHSystem() {};
 
-#ifdef BOOST_AVAILABLE
     SPHSystem *handleCommandlineOptions(int ac, char *av[]);
-#endif
 
     IOEnvironment &getIOEnvironment();
     bool isPhysical() { return is_physical_; };

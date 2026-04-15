@@ -68,7 +68,6 @@ void SPHSystem::initializeSystemConfigurations()
     }
 }
 //=================================================================================================//
-#ifdef BOOST_AVAILABLE
 SPHSystem *SPHSystem::handleCommandlineOptions(int ac, char *av[])
 {
     try
@@ -186,6 +185,5 @@ SPHSystem *SPHSystem::handleCommandlineOptions(int ac, char *av[])
 
     return this;
 }
-#endif
 //=================================================================================================//
 } // namespace SPH
