@@ -8,7 +8,52 @@
 
 如果希望在一台新的 Linux 电脑上快速部署本项目，同时避免宿主机依赖冲突，推荐使用 Docker 作为“依赖环境容器”。本项目代码保存在宿主机本地目录，Docker 只负责提供隔离好的编译和运行依赖；后续修改本地代码后，可以直接在容器内重新编译运行，无需重新安装宿主机依赖。
 
-### 1. 删除旧目录并重新克隆仓库
+### 1. 安装 Docker（Linux）
+
+如果新机器还没有 Docker，请先按照 Docker 官方文档安装 Docker Engine。下面给出常用 Linux 发行版的最小安装步骤。
+
+**Ubuntu / Debian：**
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
+sudo docker run hello-world
+```
+
+如果是 Debian，请将上面仓库地址中的 `ubuntu` 替换为 `debian`。  
+官方文档：
+- [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+- [Install Docker Engine on Debian](https://docs.docker.com/engine/install/debian/)
+
+**CentOS / RHEL 系：**
+
+```bash
+sudo dnf -y install dnf-plugins-core
+sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
+sudo docker run hello-world
+```
+
+官方文档：
+- [Install Docker Engine on CentOS](https://docs.docker.com/engine/install/centos/)
+
+如果希望当前用户不加 `sudo` 直接运行 Docker，可参考官方 Linux 后置配置文档：
+- [Linux post-installation steps for Docker Engine](https://docs.docker.com/engine/install/linux-postinstall/)
+
+### 2. 删除旧目录并重新克隆仓库
 
 以下命令示例假定项目统一放在 `/home/DataBank/SPH_solver/eulerian-SPH`。如果该目录已经存在旧版本仓库，先删除后重新克隆。下面使用实际仓库地址 `https://github.com/KIYOYOZU/eulerian-SPH`。
 
@@ -20,7 +65,7 @@ git clone https://github.com/KIYOYOZU/eulerian-SPH eulerian-SPH
 cd /home/DataBank/SPH_solver/eulerian-SPH
 ```
 
-### 2. 构建 Docker 镜像
+### 3. 构建 Docker 镜像
 
 在仓库根目录执行：
 
@@ -38,7 +83,7 @@ docker build -t eulerian-sph:latest .
 - `Boost::program_options`
 - `Ninja`
 
-### 3. 启动开发容器
+### 4. 启动开发容器
 
 推荐将宿主机本地仓库整体挂载到容器内，这样容器里的编译目录和运行输出会直接落在本地仓库中，本地改代码后也能立即重新编译。这里 Docker 只提供依赖环境，不保存开发中的源码状态。
 
@@ -64,7 +109,7 @@ docker run --rm -it \
 - `/home/DataBank/SPH_solver/eulerian-SPH/build`
 - `/home/DataBank/SPH_solver/eulerian-SPH/cases/2d_eulerian_flow_around_cylinder_LG/output`
 
-### 4. 在容器内编译并运行某个 case
+### 5. 在容器内编译并运行某个 case
 
 以圆柱绕流算例为例，在容器内执行：
 
@@ -101,7 +146,7 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build --target 2d_eulerian_flow_around_cylinder_LG --parallel 8
 ```
 
-### 5. 粒子松弛与重载运行
+### 6. 粒子松弛与重载运行
 
 圆柱绕流算例如果要先做粒子松弛，再加载松弛结果正式运行，可在容器内或通过 `docker run` 传参执行。
 
@@ -117,7 +162,7 @@ cmake --build build --target 2d_eulerian_flow_around_cylinder_LG --parallel 8
 /workspace/build/cases/2d_eulerian_flow_around_cylinder_LG/bin/2d_eulerian_flow_around_cylinder_LG --reload=true
 ```
 
-### 6. 常用环境变量
+### 7. 常用环境变量
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
