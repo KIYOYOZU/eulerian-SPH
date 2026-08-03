@@ -327,35 +327,7 @@ class XmlEngine
 
 } // namespace SPH
 
-// ---------------------------------------------------------------------------
-// Compatibility shim: map SimTK::Xml::Element and SimTK::Xml::element_iterator
-// to our tinyxml2-based replacements so that call-site code requires no change.
-// ---------------------------------------------------------------------------
-namespace SimTK
-{
-
-/**
- * @brief Minimal SpatialVec shim — replaces SimTK::SpatialVec (rotation + force 6-vector).
- * Layout: [0] = angular (torque/rotation), [1] = linear (force/translation).
- */
-struct SpatialVec
-{
-    Eigen::Matrix<double, 3, 1> data_[2];
-
-    SpatialVec() { data_[0].setZero(); data_[1].setZero(); }
-    SpatialVec(const Eigen::Matrix<double, 3, 1> &ang,
-               const Eigen::Matrix<double, 3, 1> &lin)
-    { data_[0] = ang; data_[1] = lin; }
-
-    Eigen::Matrix<double, 3, 1> &operator[](int i) { return data_[i]; }
-    const Eigen::Matrix<double, 3, 1> &operator[](int i) const { return data_[i]; }
-};
-
-namespace Xml
-{
-using Element = SPH::XmlElement;
-using element_iterator = tinyxml2::XMLElement *;
-} // namespace Xml
-} // namespace SimTK
+// SimTK types are provided by the Simbody library
+// No compatibility shim needed when Simbody is linked
 
 #endif // XML_ENGINE_H

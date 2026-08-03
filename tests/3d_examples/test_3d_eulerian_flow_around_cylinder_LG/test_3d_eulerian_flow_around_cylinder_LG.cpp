@@ -2,7 +2,6 @@
 #include "eulerian_open_boundary.h"
 #include "cylinder_3d_data.hpp"
 #include "cylinder_3d_geometry.hpp"
-#include "../shared/ck_time_step.hpp"
 
 #include <cmath>
 #include <exception>
@@ -186,7 +185,7 @@ SmokeRunResult runCylinder3D(const Cylinder3DConfig &cfg, bool geometry_only = f
         density_relaxation(fluid_inner, fluid_wall_contact);
     InteractionWithUpdate<fluid_dynamics::ViscousForceWithWall> viscous_force(fluid_inner, fluid_wall_contact);
     SimpleDynamics<Cylinder3DInitialCondition> initial_condition(fluid_block, cfg);
-    channel_ck::AcousticTimeStep<> get_acoustic_dt(fluid_block, cfg.acoustic_cfl);
+    ReduceDynamics<fluid_dynamics::AcousticTimeStep> get_acoustic_dt(fluid_block, cfg.acoustic_cfl);
     InteractionWithUpdate<Cylinder3DFarFieldBoundary> farfield_boundary(fluid_inner, cfg);
 
     InteractionWithUpdate<solid_dynamics::ViscousForceFromFluid> viscous_force_from_fluid(cylinder_contact);

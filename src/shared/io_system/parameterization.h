@@ -74,7 +74,7 @@ class BaseParameterization : public BaseClassType
     template <typename VariableType>
     void getAParameter(const std::string &element_name, const std::string &variable_name, VariableType &variable_addrs)
     {
-        SimTK::Xml::element_iterator ele_ite =
+        tinyxml2::XMLElement *ele_ite =
             xml_parameters_.root_element_.element_begin(element_name);
         if (ele_ite != xml_parameters_.root_element_.element_end())
         {
@@ -91,7 +91,7 @@ class BaseParameterization : public BaseClassType
     template <typename VariableType>
     void setAParameter(const std::string &element_name, const std::string &variable_name, VariableType &variable_addrs)
     {
-        SimTK::Xml::element_iterator ele_ite =
+        tinyxml2::XMLElement *ele_ite =
             xml_parameters_.root_element_.element_begin(element_name);
         if (ele_ite == xml_parameters_.root_element_.element_end())
         {

@@ -18,6 +18,10 @@ Makefile
 # Case outputs (generated at runtime)
 cases/*/output/
 cases/*/output_long/
+
+# Generated runtime logs
+**/*.log
+
 cases/*/output_backup/
 cases/*/reload/
 cases/*/restart/

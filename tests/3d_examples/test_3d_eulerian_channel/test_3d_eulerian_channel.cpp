@@ -19,7 +19,6 @@
 #include "eulerian_open_boundary.h"  // Task 2 shared helper (linked for GTest, not called on main path)
 #include "eulerian_channel_data.hpp"
 #include "eulerian_channel_geometry.hpp"
-#include "../shared/ck_time_step.hpp"
 
 #include <gtest/gtest.h>
 #include <algorithm>
@@ -275,7 +274,7 @@ SmokeRunResult eulerian_channel_3d(const SimulationConfig &cfg)
         density_relaxation(fluid_inner, fluid_wall_contact);
     InteractionWithUpdate<fluid_dynamics::ViscousForceWithWall> viscous_force(fluid_inner, fluid_wall_contact);
     SimpleDynamics<EulerianChannelInitialCondition> initial_condition(fluid_block, cfg);
-    channel_ck::AcousticTimeStep<> get_acoustic_dt(fluid_block, cfg.acoustic_cfl);
+    ReduceDynamics<fluid_dynamics::AcousticTimeStep> get_acoustic_dt(fluid_block, cfg.acoustic_cfl);
     // FarFieldBoundary：非反射开边界，构造注入 cfg 远场（契约 H1），update 自写出流/入流凸组合
     // （出流远场 vel 用抛物线 + 出流压力加权混合，对齐 2D LG）。
     // 必须用 InteractionWithUpdate 包装：exec() 才会先 interaction(邻域加权累加) 后 update(凸组合写 state)。

@@ -15,6 +15,9 @@ find_package(Eigen3 REQUIRED)
 find_package(TBB REQUIRED)
 find_package(Boost REQUIRED COMPONENTS program_options)  # program_options + boost::geometry
 
+# Define BOOST_AVAILABLE since we always require program_options
+add_compile_definitions(BOOST_AVAILABLE)
+
 add_subdirectory(src)
 
 if(EULERIAN_SPH_BUILD_TESTS)

@@ -11,6 +11,9 @@ RUN apt-get update \
         libboost-dev \
         libboost-program-options-dev \
         libeigen3-dev \
+        libfmt-dev \
+        libspdlog-dev \
+        libsimbody-dev \
         libtbb-dev \
         ninja-build \
         pkg-config \

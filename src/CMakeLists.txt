@@ -16,11 +16,19 @@ endif()
 
 find_package(Simbody CONFIG REQUIRED)
 
+# spdlog / fmt：io_system、sphinxsys_system 等使用了 spdlog（外部 fmt 模式）
+find_package(spdlog CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+
 # 收集 shared 源文件
 file(GLOB_RECURSE SPHINXSYS_SHARED_HEADERS CONFIGURE_DEPENDS
     shared/*.h shared/*.hpp shared/*.hxx)
 file(GLOB_RECURSE SPHINXSYS_SHARED_SOURCES CONFIGURE_DEPENDS
     shared/*.cpp)
+
+# shared_ck is the upstream CK execution backend and is excluded from eulerian-SPH.
+list(FILTER SPHINXSYS_SHARED_HEADERS EXCLUDE REGEX "(^|/)shared/shared_ck/")
+list(FILTER SPHINXSYS_SHARED_SOURCES EXCLUDE REGEX "(^|/)shared/shared_ck/")
 
 # 排除与 tinyxml2 shim 不兼容的 simbody xml 源文件
 list(FILTER SPHINXSYS_SHARED_SOURCES EXCLUDE REGEX "state_engine\\.cpp$")
@@ -71,6 +79,8 @@ target_link_libraries(sphinxsys_2d PUBLIC
     SimTKcommon
     SimTKmath
     SimTKsimbody
+    spdlog::spdlog
+    fmt::fmt
 )
 
 target_compile_features(sphinxsys_2d PUBLIC cxx_std_20)
@@ -123,6 +133,8 @@ target_link_libraries(sphinxsys_3d PUBLIC
     SimTKcommon
     SimTKmath
     SimTKsimbody
+    spdlog::spdlog
+    fmt::fmt
 )
 
 target_compile_features(sphinxsys_3d PUBLIC cxx_std_20)

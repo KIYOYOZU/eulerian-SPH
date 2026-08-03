@@ -30,7 +30,8 @@
 #define ALL_CONFIGURATION_DYNAMICS_H
 
 #include "particle_sorting.hpp"
-#include "update_body_relation.hpp"
-#include "update_cell_linked_list.hpp"
+// NOTE: update_body_relation.hpp and update_cell_linked_list.hpp are excluded
+// as they belong to shared_ck (CellLinkedList update and BodyRelation update)
+// which is not needed for eulerian SPH.
 
 #endif // ALL_CONFIGURATION_DYNAMICS_H
