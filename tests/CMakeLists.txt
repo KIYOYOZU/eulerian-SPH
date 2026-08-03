@@ -1,0 +1,5 @@
+if(EULERIAN_SPH_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(2d_examples)
+    add_subdirectory(3d_examples)
+endif()

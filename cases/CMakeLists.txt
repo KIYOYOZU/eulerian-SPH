@@ -1,3 +1,0 @@
-add_subdirectory(2d_eulerian_taylor_green_LG)
-add_subdirectory(2d_eulerian_flow_around_cylinder_LG)
-add_subdirectory(2d_eulerian_supersonic_flow_around_cylinder)

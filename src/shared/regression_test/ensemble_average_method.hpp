@@ -117,7 +117,7 @@ void RegressionTestEnsembleAverage<ObserveMethodType>::setupAndCorrection()
         {
             this->mean_variance_xml_engine_in_.loadXmlFile(this->mean_variance_filefullpath_);
             SimTK::Xml::Element mean_element = this->mean_variance_xml_engine_in_.getChildElement("Mean_Element");
-            this->number_of_snapshot_old_ = static_cast<int>(mean_element.childElementCount());
+            this->number_of_snapshot_old_ = std::distance(mean_element.element_begin(), mean_element.element_end());
 
             BiVector<VariableType> temp(SMAX(this->snapshot_, this->number_of_snapshot_old_), StdVec<VariableType>(this->observation_));
             meanvalue_ = temp;

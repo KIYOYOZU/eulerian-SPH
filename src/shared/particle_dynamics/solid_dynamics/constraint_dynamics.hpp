@@ -35,7 +35,6 @@ Vecd PositionTranslate<DynamicsIdentifier>::getDisplacement(size_t index_i, Real
            (end_time_ - *physical_time_);
 }
 //=================================================================================================//
-#ifdef SPHINXSYS_USE_SIMBODY
 template <class DynamicsIdentifier>
 ConstraintBySimBody<DynamicsIdentifier>::
     ConstraintBySimBody(DynamicsIdentifier &identifier, SimTK::MultibodySystem &MBsystem,
@@ -121,7 +120,6 @@ SimTK::SpatialVec TotalForceForSimBody<DynamicsIdentifier>::reduce(size_t index_
     return SimTK::SpatialVec(torque_from_particle, force_from_particle);
 }
 //=================================================================================================//
-#endif // SPHINXSYS_USE_SIMBODY
 } // namespace solid_dynamics
 } // namespace SPH
 #endif // CONSTRAINT_DYNAMICS_HPP

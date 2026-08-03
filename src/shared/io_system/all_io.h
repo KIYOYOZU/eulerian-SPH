@@ -31,19 +31,10 @@
 #define ALL_IO_H
 
 #include "io_base.h"
-#if SPHINXSYS_USE_SYCL
-#include "io_base_ck.h"
-#endif
-#include "io_log.h"
+#include "io_base.hpp"
 #include "io_observation.h"
-#if SPHINXSYS_USE_SYCL
-#include "io_observation_ck.h"
-#endif
 #include "io_plt.hpp"
 #include "io_vtk.h"
 #include "io_vtk_mesh.h"
-#if SPHINXSYS_USE_SYCL
-#include "io_vtk_mesh_ck.h"
-#endif
 
 #endif // ALL_IO_H

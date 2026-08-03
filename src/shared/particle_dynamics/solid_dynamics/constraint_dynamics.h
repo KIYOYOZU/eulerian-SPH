@@ -30,15 +30,13 @@
 #ifndef CONSTRAINT_DYNAMICS_H
 #define CONSTRAINT_DYNAMICS_H
 
-#include "all_particle_dynamics.h"
 #include "base_kernel.h"
+#include "base_local_dynamics.h"
+#include "body_part_for_simbody.h"
+#include "dynamics_algorithms.h"
 #include "elastic_solid.h"
 #include "general_constraint.h"
 #include "general_reduce.h"
-
-#ifdef SPHINXSYS_USE_SIMBODY
-#include "all_simbody.h"
-#endif // SPHINXSYS_USE_SIMBODY
 
 namespace SPH
 {
@@ -154,7 +152,6 @@ class ConstrainSolidBodyMassCenter : public MotionConstraint<SPHBody>
  * @class ConstraintBySimBody
  * @brief Constrain by the motion computed from Simbody.
  */
-#ifdef SPHINXSYS_USE_SIMBODY
 template <class DynamicsIdentifier>
 class ConstraintBySimBody : public MotionConstraint<DynamicsIdentifier>
 {
@@ -205,7 +202,6 @@ class TotalForceForSimBody
 };
 using TotalForceOnBodyForSimBody = TotalForceForSimBody<SPHBody>;
 using TotalForceOnBodyPartForSimBody = TotalForceForSimBody<BodyPartByParticle>;
-#endif // SPHINXSYS_USE_SIMBODY
 } // namespace solid_dynamics
 } // namespace SPH
 #endif // CONSTRAINT_DYNAMICS_H

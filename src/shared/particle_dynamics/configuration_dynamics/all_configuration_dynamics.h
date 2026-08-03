@@ -30,6 +30,7 @@
 #define ALL_CONFIGURATION_DYNAMICS_H
 
 #include "particle_sorting.hpp"
-// update_body_relation.hpp and update_cell_linked_list.hpp are shared_ck (CK) variants, not needed here
+#include "update_body_relation.hpp"
+#include "update_cell_linked_list.hpp"
 
 #endif // ALL_CONFIGURATION_DYNAMICS_H

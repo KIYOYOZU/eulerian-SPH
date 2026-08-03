@@ -46,3 +46,10 @@ AGENTS.md
 **/restart
 **/results
 **/reload
+
+# WorkBuddy data
+.workbuddy/
+
+# Large data files
+tests/3d_examples/test_3d_eulerian_rotor67/docu/R67_CFX/rotor67_curves.stl
+tests/3d_examples/test_3d_eulerian_rotor67/docu/R67_CFX/rotor67_domain.stl

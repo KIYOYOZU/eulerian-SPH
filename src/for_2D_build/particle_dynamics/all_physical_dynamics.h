@@ -32,6 +32,6 @@
 #define ALL_PHYSICAL_DYNAMICS_2D_H
 
 #include "all_shared_physical_dynamics.h"
-// all_shared_physical_dynamics_ck.h is a shared_ck (CK) header, not needed
+#include "all_shared_physical_dynamics_ck.h"
 
 #endif // ALL_PHYSICAL_DYNAMICS_2D_H

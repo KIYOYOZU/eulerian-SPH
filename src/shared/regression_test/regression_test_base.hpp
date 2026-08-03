@@ -97,7 +97,7 @@ void RegressionTestBase<ObserveMethodType>::readTagFromXmlMemory(
     SimTK::Xml::element_iterator ele_ite = element.element_begin();
     for (; ele_ite != element.element_end(); ++ele_ite)
     {
-        element_tag[l] = ele_ite->Name();
+        element_tag[l] = ele_ite->getElementTag();
         l++;
     }
 }
