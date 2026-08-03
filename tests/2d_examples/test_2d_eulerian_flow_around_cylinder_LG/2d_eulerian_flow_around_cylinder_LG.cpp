@@ -66,10 +66,11 @@ int main(int ac, char *av[])
             1.3, 1.0, local_refinement_level, local_refinement_spacing_factor);
     }
     water_block.defineComponentLevelSetShape("OuterBoundary");
-    water_block.defineClosure<WeaklyCompressibleFluid, Viscosity>(ConstructArgs(rho0_f, c_f), mu_f);
+    water_block.defineMatterMaterial<WeaklyCompressibleFluid>(rho0_f, c_f);
+    water_block.addMaterialProperty<Viscosity>(mu_f);
     if (!sph_system.RunParticleRelaxation() && sph_system.ReloadParticles())
     {
-        water_block.generateParticles<BaseParticles, Reload>(water_block.getName());
+        water_block.generateParticles<BaseParticles, Reload>(water_block.Name());
         if (load_remapped_state)
         {
             water_block.getBaseParticles()
@@ -90,9 +91,9 @@ int main(int ac, char *av[])
     SolidBody cylinder(sph_system, makeShared<Cylinder>("Cylinder"));
     cylinder.defineAdaptationRatios(1.3, 2.0);
     cylinder.defineBodyLevelSetShape();
-    cylinder.defineMaterial<Solid>();
+    cylinder.defineMatterMaterial<Solid>();
     (!sph_system.RunParticleRelaxation() && sph_system.ReloadParticles())
-        ? cylinder.generateParticles<BaseParticles, Reload>(cylinder.getName())
+        ? cylinder.generateParticles<BaseParticles, Reload>(cylinder.Name())
         : cylinder.generateParticles<BaseParticles, Lattice>();
     //----------------------------------------------------------------------
     //	Define body relation map.
@@ -383,7 +384,7 @@ int main(int ac, char *av[])
         water_block_kernel_correction_matrix.exec();
         kernel_gradient_update.exec();
 
-        const std::string output_folder = sph_system.getIOEnvironment().OutputFolder();
+        const std::string output_folder = IO::getEnvironment().OutputFolder();
         for (const auto &filename : cylinder_lg::restartDatFilenamesToTruncate(output_folder))
         {
             cylinder_lg::truncateDatFileToTime(output_folder + "/" + filename, physical_time);
@@ -392,7 +393,7 @@ int main(int ac, char *av[])
     }
     else if (remapped_continuation_mode)
     {
-        const std::string output_folder = sph_system.getIOEnvironment().OutputFolder();
+        const std::string output_folder = IO::getEnvironment().OutputFolder();
         for (const auto &filename : cylinder_lg::restartDatFilenamesToTruncate(output_folder))
         {
             cylinder_lg::truncateDatFileToTime(output_folder + "/" + filename, physical_time);

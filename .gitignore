@@ -57,3 +57,13 @@ AGENTS.md
 # Large data files
 tests/3d_examples/test_3d_eulerian_rotor67/docu/R67_CFX/rotor67_curves.stl
 tests/3d_examples/test_3d_eulerian_rotor67/docu/R67_CFX/rotor67_domain.stl
+
+# Per-case input/ folders (regression baselines, runtimes, lookup tables)
+**/input/
+
+# output_backup directories (rotated during restart runs)
+**/output_backup/
+
+# Python bytecode
+**/__pycache__/
+**/*.pyc

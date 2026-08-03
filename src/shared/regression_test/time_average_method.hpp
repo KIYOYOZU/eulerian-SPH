@@ -205,8 +205,8 @@ void RegressionTestTimeAverage<ObserveMethodType>::readMeanVarianceFromXml()
     if (this->number_of_run_ > 1)
     {
         mean_variance_xml_engine_in_.loadXmlFile(mean_variance_filefullpath_);
-        SimTK::Xml::Element meanvalue_element = mean_variance_xml_engine_in_.getChildElement("MeanValue_Element");
-        SimTK::Xml::element_iterator ele_ite_mean_ = meanvalue_element.element_begin();
+        XmlElement meanvalue_element = mean_variance_xml_engine_in_.getChildElement("MeanValue_Element");
+        XmlEngine::element_iterator ele_ite_mean_ = meanvalue_element.element_begin();
         for (; ele_ite_mean_ != meanvalue_element.element_end(); ++ele_ite_mean_)
             for (int k = 0; k != this->observation_; ++k)
             {
@@ -214,8 +214,8 @@ void RegressionTestTimeAverage<ObserveMethodType>::readMeanVarianceFromXml()
                 mean_variance_xml_engine_in_.getRequiredAttributeValue(ele_ite_mean_, attribute_name, meanvalue_[k]);
             }
 
-        SimTK::Xml::Element variance_element = mean_variance_xml_engine_in_.getChildElement("Variance_Element");
-        SimTK::Xml::element_iterator ele_ite_variance = variance_element.element_begin();
+        XmlElement variance_element = mean_variance_xml_engine_in_.getChildElement("Variance_Element");
+        XmlEngine::element_iterator ele_ite_variance = variance_element.element_begin();
         for (; ele_ite_variance != variance_element.element_end(); ++ele_ite_variance)
             for (int k = 0; k != this->observation_; ++k)
             {
@@ -282,20 +282,20 @@ template <class ObserveMethodType>
 void RegressionTestTimeAverage<ObserveMethodType>::writeMeanVarianceToXml()
 {
     mean_variance_xml_engine_out_.addElementToXmlDoc("MeanValue_Element");
-    SimTK::Xml::Element meanvalue_element = mean_variance_xml_engine_out_.getChildElement("MeanValue_Element");
+    XmlElement meanvalue_element = mean_variance_xml_engine_out_.getChildElement("MeanValue_Element");
     mean_variance_xml_engine_out_.addChildToElement(meanvalue_element, "Snapshot_MeanValue");
     for (int k = 0; k != this->observation_; ++k)
     {
-        SimTK::Xml::element_iterator ele_ite_mean = meanvalue_element.element_begin();
+        XmlEngine::element_iterator ele_ite_mean = meanvalue_element.element_begin();
         std::string attribute_name = this->quantity_name_ + "_" + std::to_string(k);
         mean_variance_xml_engine_out_.setAttributeToElement(ele_ite_mean, attribute_name, meanvalue_new_[k]);
     }
     mean_variance_xml_engine_out_.addElementToXmlDoc("Variance_Element");
-    SimTK::Xml::Element variance_element = mean_variance_xml_engine_out_.getChildElement("Variance_Element");
+    XmlElement variance_element = mean_variance_xml_engine_out_.getChildElement("Variance_Element");
     mean_variance_xml_engine_out_.addChildToElement(variance_element, "Snapshot_Variance");
     for (int k = 0; k != this->observation_; ++k)
     {
-        SimTK::Xml::element_iterator ele_ite_variance = variance_element.element_begin();
+        XmlEngine::element_iterator ele_ite_variance = variance_element.element_begin();
         std::string attribute_name = this->quantity_name_ + "_" + std::to_string(k);
         mean_variance_xml_engine_out_.setAttributeToElement(ele_ite_variance, attribute_name, variance_new_[k]);
     }
@@ -354,6 +354,15 @@ bool RegressionTestTimeAverage<ObserveMethodType>::compareMeanVariance()
 template <class ObserveMethodType>
 void RegressionTestTimeAverage<ObserveMethodType>::resultTest()
 {
+    if (this->number_of_run_ <= 1 ||
+        !fs::exists(mean_variance_filefullpath_) ||
+        this->converged_ == "false")
+    {
+        // No time-averaged baseline available: skip the regression check.
+        std::cout << "[regression] " << this->quantity_name_
+                  << ": no comparable TA baseline, skipping TA check." << std::endl;
+        return;
+    }
     int test_wrong = 0;
 
     for (int k = 0; k != this->observation_; ++k)

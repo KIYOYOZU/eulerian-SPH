@@ -17,6 +17,8 @@ Usage:
 Outputs:
     results/inlet_profile.png            (placeholder if no VTP reader)
     results/centerline_velocity.png      (from reduced max-speed history)
+    results/profile_evolution.png        (from all fluid VTP snapshots)
+    results/final_3d_velocity_cloud.png (speed-colored point cloud from final VTP)
     results/wall_slip_summary.json       (finiteness + max-speed summary)
 """
 import argparse
@@ -252,6 +254,136 @@ def write_profile_evolution_figure(data_dir: Path, out_path: Path,
           f"(t: {t_min:.3f} → {t_max:.3f} s, {n} snapshots)")
 
 
+def write_final_3d_flow_figure(data_dir: Path, out_path: Path,
+                               max_vectors: int = 2500) -> None:
+    """Plot the final VTP velocity field as a spatially sampled 3D quiver."""
+    import numpy as np
+    import pyvista as pv
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    vtp_files = sorted(data_dir.glob("ChannelFluid_*.vtp"))
+    if not vtp_files:
+        print("[postprocess] no ChannelFluid VTP found, skipping 3D flow figure",
+              file=sys.stderr)
+        return
+
+    final_vtp = vtp_files[-1]
+    mesh = pv.read(str(final_vtp))
+    points = np.asarray(mesh.points, dtype=float)
+    velocity = np.asarray(mesh.point_data["Velocity"], dtype=float)
+    if points.shape[0] != velocity.shape[0] or points.shape[0] == 0:
+        raise ValueError(f"invalid point/velocity arrays in {final_vtp}")
+
+    speed = np.linalg.norm(velocity, axis=1)
+    finite = np.isfinite(points).all(axis=1) & np.isfinite(velocity).all(axis=1)
+    points, velocity, speed = points[finite], velocity[finite], speed[finite]
+    if points.shape[0] == 0:
+        raise ValueError(f"no finite velocity vectors in {final_vtp}")
+
+    # Select one representative vector per spatial voxel, then cap the count.
+    # This avoids storage-order bias and keeps the quiver readable.
+    extent = np.ptp(points, axis=0)
+    spacing = np.max(extent) / max(8.0, max_vectors ** (1.0 / 3.0))
+    spacing = max(float(spacing), 1e-12)
+    keys = np.floor((points - points.min(axis=0)) / spacing).astype(np.int64)
+    representatives = {}
+    for index, key in enumerate(map(tuple, keys)):
+        representatives.setdefault(key, index)
+    selected = np.fromiter(representatives.values(), dtype=np.int64)
+    if selected.size > max_vectors:
+        order = np.argsort(speed[selected])[::-1][:max_vectors]
+        selected = selected[order]
+
+    p = points[selected]
+    v = velocity[selected]
+    s = speed[selected]
+    vmax = float(np.max(s))
+    color_norm = plt.Normalize(vmin=0.0, vmax=vmax if vmax > 0.0 else 1.0)
+
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection="3d")
+    colors = plt.cm.viridis(color_norm(s))
+    vector_length = max(float(np.max(extent)) * 0.045, 1e-6)
+    ax.quiver(p[:, 0], p[:, 1], p[:, 2],
+              v[:, 0], v[:, 1], v[:, 2],
+              length=vector_length, normalize=True,
+              colors=colors, linewidth=0.55, arrow_length_ratio=0.28)
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_zlabel("z (m)")
+    ax.set_title(f"Final 3D channel velocity field ({final_vtp.stem})")
+    ax.set_box_aspect(np.maximum(extent, 1e-6))
+    scalar_mappable = plt.cm.ScalarMappable(cmap="viridis", norm=color_norm)
+    scalar_mappable.set_array(s)
+    fig.colorbar(scalar_mappable, ax=ax, pad=0.1, shrink=0.7,
+                 label="speed |u| (m/s)")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    print(f"[postprocess] wrote {out_path} from {final_vtp.name} "
+          f"({selected.size} vectors/{points.shape[0]} finite particles)")
+
+
+def write_final_3d_velocity_cloud_figure(data_dir: Path, out_path: Path,
+                                         DH: float = 1.0,
+                                         U_bulk: float = 1.0) -> None:
+    """Render the final speed cloud using the cylinder postprocessor style."""
+    import numpy as np
+    import pyvista as pv
+
+    vtp_files = sorted(
+        data_dir.glob("ChannelFluid_[0-9]*.vtp"),
+        key=lambda path: int(path.stem.rsplit("_", 1)[1]),
+    )
+    if not vtp_files:
+        print("[postprocess] no numeric ChannelFluid VTP found, "
+              "skipping 3D velocity cloud", file=sys.stderr)
+        return
+
+    final_vtp = vtp_files[-1]
+    mesh = pv.read(str(final_vtp))
+    points = np.asarray(mesh.points, dtype=np.float64)
+    velocity = np.asarray(mesh.point_data["Velocity"], dtype=np.float64)
+    speed = np.linalg.norm(velocity[:, :3], axis=1)
+    finite = np.isfinite(points).all(axis=1) & np.isfinite(speed)
+    points, speed = points[finite], speed[finite]
+    if points.shape[0] == 0:
+        raise ValueError(f"no finite velocity data in {final_vtp}")
+
+    extent = np.ptp(points, axis=0)
+    x_values = np.unique(np.sort(points[:, 0]))
+    dp = float(np.min(np.diff(x_values))) if x_values.size > 1 else 0.05
+    particle_radius = (3.0 * dp ** 3 / (4.0 * np.pi)) ** (1.0 / 3.0)
+    widest_in_plane_span = max(float(extent[0]), float(extent[1]), 1.0)
+    points_per_length = 72.0 * 8.8 * 0.84 / widest_in_plane_span
+    marker_size = 0.35 * np.pi * (particle_radius * points_per_length) ** 2
+    color_max = max(1.6 * float(U_bulk), float(np.nanmax(speed)))
+
+    fig = plt.figure(figsize=(8.8, 5.6))
+    ax = fig.add_subplot(1, 1, 1, projection="3d", computed_zorder=False)
+    ax.set_position([0.01, 0.02, 0.84, 0.92])
+    cloud = ax.scatter(
+        points[:, 0], points[:, 2], points[:, 1],
+        c=speed, cmap="turbo", marker="o", s=marker_size,
+        vmin=0.0, vmax=color_max, edgecolors="none", linewidths=0.0,
+        depthshade=False, alpha=1.0, zorder=2,
+    )
+    ax.view_init(elev=24.0, azim=-62.0)
+    ax.set_proj_type("ortho")
+    # Display coordinates are (x, z, y): physical y is vertical.
+    ax.set_box_aspect([max(extent[0], 1e-6), max(extent[2], 1e-6),
+                       max(DH, 1e-6)])
+    ax.set_axis_off()
+    ax.set_title(f"3D Flow Field (t = final, |u|, {final_vtp.stem})", pad=4)
+    cbar = fig.colorbar(cloud, ax=ax, fraction=0.03, pad=0.01, shrink=0.84)
+    cbar.set_label("Velocity magnitude |u| (m/s)")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[postprocess] wrote {out_path} from {final_vtp.name} "
+          f"({points.shape[0]} particles, color range 0-{color_max:.4g} m/s)")
+
+
 def write_summary_json(out_path: Path, times: List[float], values: List[float],
                        vtp_iters: List[int]) -> None:
     summary = {
@@ -333,6 +465,14 @@ def main() -> int:
                                        DH=DH, U_bulk=U_bulk)
     except ImportError:
         print("[postprocess] pyvista not available, skipping profile evolution",
+              file=sys.stderr)
+
+    # Final 3D velocity-magnitude cloud from the last numeric ChannelFluid snapshot.
+    try:
+        write_final_3d_velocity_cloud_figure(
+            data_dir, results_dir / "final_3d_velocity_cloud.png")
+    except ImportError:
+        print("[postprocess] pyvista not available, skipping final 3D velocity cloud",
               file=sys.stderr)
 
     # JSON summary

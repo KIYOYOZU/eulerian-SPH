@@ -84,15 +84,15 @@ class RegressionTestBase : public ObserveMethodType
     int label_for_repeat_;       /*< the label used stable convergence (several convergence). */
 
     template <typename T>
-    void writeDataToXmlMemory(XmlEngine &xml_engine, SimTK::Xml::Element &element, const BiVector<T> &quantity,
+    void writeDataToXmlMemory(XmlEngine &xml_engine, XmlElement &element, const BiVector<T> &quantity,
                               int snapshot, int observation, const std::string &quantity_name, StdVec<std::string> &element_tag);
     template <typename T>
-    void writeDataToXmlMemory(XmlEngine &xml_engine, SimTK::Xml::Element &element,
+    void writeDataToXmlMemory(XmlEngine &xml_engine, XmlElement &element,
                               std::string element_name, int k, const T &quantity, const std::string &quantity_name);
     template <typename T>
-    void readDataFromXmlMemory(XmlEngine &xml_engine, SimTK::Xml::Element &element,
+    void readDataFromXmlMemory(XmlEngine &xml_engine, XmlElement &element,
                                int k, BiVector<T> &result_container, const std::string &quantity_name);
-    void readTagFromXmlMemory(SimTK::Xml::Element &element, StdVec<std::string> &element_tag);
+    void readTagFromXmlMemory(XmlElement &element, StdVec<std::string> &element_tag);
 
   public:
     template <typename... Args>

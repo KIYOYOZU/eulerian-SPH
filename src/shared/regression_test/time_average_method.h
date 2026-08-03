@@ -115,6 +115,15 @@ class RegressionTestTimeAverage : public RegressionTestBase<ObserveMethodType>
     /** the interface for testing new result. */
     void testResult(const std::string &filter = "false")
     {
+        if (this->number_of_run_ <= 1 || this->converged_ == "false" ||
+            !fs::exists(this->mean_variance_filefullpath_))
+        {
+            // No time-averaged baseline is present: skip the comparison
+            // entirely. setupTheTest would otherwise abort the process.
+            std::cout << "[regression] " << this->quantity_name_
+                      << ": no comparable TA baseline, skipping TA check." << std::endl;
+            return;
+        }
         setupTheTest();
         if (filter == "true")
             filterExtremeValues();

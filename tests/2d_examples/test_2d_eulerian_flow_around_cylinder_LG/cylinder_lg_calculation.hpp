@@ -448,7 +448,7 @@ inline MassFluxDiagnosticRecord computeDensityRelaxationMassFluxDiagnostic(
     MassFluxDiagnosticRecord record;
 
     BaseParticles &particles = fluid_body.getBaseParticles();
-    Fluid &fluid = DynamicCast<Fluid>(&fluid_body, particles.getBaseMaterial());
+    Fluid &fluid = DynamicCast<Fluid>(&fluid_body, fluid_body.getMatterMaterial());
     AcousticRiemannSolver riemann_solver(fluid, fluid, Real(15.0));
 
     Real *rho = particles.getVariableDataByName<Real>("Density");
@@ -481,7 +481,7 @@ inline MassFluxDiagnosticRecord computeDensityRelaxationMassFluxDiagnostic(
     for (size_t k = 0; k != wall_contact_relation.contact_configuration_.size(); ++k)
     {
         BaseParticles *wall_particles = wall_contact_relation.contact_particles_[k];
-        Solid &solid_material = DynamicCast<Solid>(&fluid_body, wall_particles->getBaseMaterial());
+        Solid &solid_material = DynamicCast<Solid>(&fluid_body, wall_particles->getSPHBody().getMatterMaterial());
         Real *wall_vol = wall_particles->getVariableDataByName<Real>("VolumetricMeasure");
         Vecd *wall_normal = wall_particles->getVariableDataByName<Vecd>("NormalDirection");
         Vecd *wall_velocity_average = solid_material.AverageVelocity(wall_particles);
@@ -1223,7 +1223,7 @@ inline bool reportRelationFiniteState(
 inline void syncEulerianStateFromDensityAndVelocity(SPHBody &fluid_body)
 {
     BaseParticles &particles = fluid_body.getBaseParticles();
-    Fluid &fluid = DynamicCast<Fluid>(&fluid_body, particles.getBaseMaterial());
+    Fluid &fluid = DynamicCast<Fluid>(&fluid_body, fluid_body.getMatterMaterial());
     Real *rho = particles.getVariableDataByName<Real>("Density");
     Real *vol = particles.getVariableDataByName<Real>("VolumetricMeasure");
     Real *mass = particles.getVariableDataByName<Real>("Mass");
@@ -1264,7 +1264,7 @@ inline void initializeEulerianStateFromDensityAndVelocity(SPHBody &fluid_body)
 inline void initializeEulerianStateFromRemappedReload(SPHBody &fluid_body)
 {
     BaseParticles &particles = fluid_body.getBaseParticles();
-    Fluid &fluid = DynamicCast<Fluid>(&fluid_body, particles.getBaseMaterial());
+    Fluid &fluid = DynamicCast<Fluid>(&fluid_body, fluid_body.getMatterMaterial());
     Real *rho = particles.getVariableDataByName<Real>("Density");
     Real *vol = particles.getVariableDataByName<Real>("VolumetricMeasure");
     Real *mass = particles.registerStateVariableData<Real>("Mass");
@@ -1472,7 +1472,7 @@ class Cylinder : public MultiPolygonShape
     explicit Cylinder(const std::string &shape_name) : MultiPolygonShape(shape_name)
     {
         /** Geometry definition. */
-        multi_polygon_.addACircle(cylinder_center, cylinder_radius, 100, GeometricOps::add);
+        multi_polygon_.addCircle(cylinder_center, cylinder_radius, 100, GeometricOps::add);
     }
 };
 
@@ -1708,7 +1708,7 @@ class FluidWallViscousForceRecorder : public LocalDynamics, public DataDelegateC
     {
         for (size_t k = 0; k != contact_particles_.size(); ++k)
         {
-            Solid &solid_material = DynamicCast<Solid>(this, contact_particles_[k]->getBaseMaterial());
+            Solid &solid_material = DynamicCast<Solid>(this, contact_particles_[k]->getSPHBody().getMatterMaterial());
             wall_vel_ave_.push_back(solid_material.AverageVelocity(contact_particles_[k]));
             wall_Vol_.push_back(contact_particles_[k]->getVariableDataByName<Real>("VolumetricMeasure"));
         }

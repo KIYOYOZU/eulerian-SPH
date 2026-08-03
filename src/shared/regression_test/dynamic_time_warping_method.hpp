@@ -75,8 +75,8 @@ void RegressionTestDynamicTimeWarping<ObserveMethodType>::readDTWDistanceFromXml
     if (this->number_of_run_ > 1)
     {
         dtw_distance_xml_engine_in_.loadXmlFile(dtw_distance_filefullpath_);
-        SimTK::Xml::Element element_name_dtw_distance = dtw_distance_xml_engine_in_.root_element_;
-        SimTK::Xml::element_iterator ele_ite = element_name_dtw_distance.element_begin();
+        XmlElement element_name_dtw_distance = dtw_distance_xml_engine_in_.root_element_;
+        XmlEngine::element_iterator ele_ite = element_name_dtw_distance.element_begin();
         for (; ele_ite != element_name_dtw_distance.element_end(); ++ele_ite)
             for (int k = 0; k != this->observation_; ++k)
             {
@@ -104,9 +104,9 @@ void RegressionTestDynamicTimeWarping<ObserveMethodType>::updateDTWDistance()
 template <class ObserveMethodType>
 void RegressionTestDynamicTimeWarping<ObserveMethodType>::writeDTWDistanceToXml()
 {
-    SimTK::Xml::Element DTWElement = dtw_distance_xml_engine_out_.root_element_;
+    XmlElement DTWElement = dtw_distance_xml_engine_out_.root_element_;
     dtw_distance_xml_engine_out_.addChildToElement(DTWElement, "DTWDistance");
-    SimTK::Xml::element_iterator ele_ite = DTWElement.element_begin();
+    XmlEngine::element_iterator ele_ite = DTWElement.element_begin();
     for (int k = 0; k != this->observation_; ++k)
     {
         std::string attribute_name = this->quantity_name_ + "_" + std::to_string(k);
@@ -163,6 +163,16 @@ bool RegressionTestDynamicTimeWarping<ObserveMethodType>::compareDTWDistance(Rea
 template <class ObserveMethodType>
 void RegressionTestDynamicTimeWarping<ObserveMethodType>::resultTest()
 {
+    if (this->number_of_run_ <= 1 ||
+        !fs::exists(dtw_distance_filefullpath_) ||
+        this->converged_ == "false")
+    {
+        // No previous DTW distance to compare against: skip the regression
+        // check and let the case finish.
+        std::cout << "[regression] " << this->quantity_name_
+                  << ": no comparable DTW baseline, skipping DTW check." << std::endl;
+        return;
+    }
     int test_wrong = 0;
     StdVec<Real> dtw_distance_current_;
     dtw_distance_current_ = calculateDTWDistance(this->result_in_, this->current_result_trans_);

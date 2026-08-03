@@ -116,6 +116,9 @@ int main(int ac, char *av[])
     //	Define the methods for I/O operations and observations of the simulation.
     //----------------------------------------------------------------------
     BodyStatesRecordingToVtp body_states_recording(sph_system);
+    body_states_recording.addToWrite<Vecd>(water_body, "Velocity");
+    body_states_recording.addToWrite<Real>(water_body, "Density");
+    body_states_recording.addToWrite<Real>(water_body, "Pressure");
     RegressionTestEnsembleAverage<ReducedQuantityRecording<TotalKineticEnergy>> write_total_kinetic_energy(water_body);
     RegressionTestEnsembleAverage<ReducedQuantityRecording<MaximumSpeed>> write_maximum_speed(water_body);
     //----------------------------------------------------------------------

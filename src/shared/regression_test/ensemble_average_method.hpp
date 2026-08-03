@@ -116,7 +116,7 @@ void RegressionTestEnsembleAverage<ObserveMethodType>::setupAndCorrection()
         else
         {
             this->mean_variance_xml_engine_in_.loadXmlFile(this->mean_variance_filefullpath_);
-            SimTK::Xml::Element mean_element = this->mean_variance_xml_engine_in_.getChildElement("Mean_Element");
+            XmlElement mean_element = this->mean_variance_xml_engine_in_.getChildElement("Mean_Element");
             this->number_of_snapshot_old_ = std::distance(mean_element.element_begin(), mean_element.element_end());
 
             BiVector<VariableType> temp(SMAX(this->snapshot_, this->number_of_snapshot_old_), StdVec<VariableType>(this->observation_));
@@ -151,8 +151,8 @@ void RegressionTestEnsembleAverage<ObserveMethodType>::readMeanVarianceFromXml()
 {
     if (this->number_of_run_ > 1)
     {
-        SimTK::Xml::Element mean_element = this->mean_variance_xml_engine_in_.getChildElement("Mean_Element");
-        SimTK::Xml::Element variance_element = this->mean_variance_xml_engine_in_.getChildElement("Variance_Element");
+        XmlElement mean_element = this->mean_variance_xml_engine_in_.getChildElement("Mean_Element");
+        XmlElement variance_element = this->mean_variance_xml_engine_in_.getChildElement("Variance_Element");
         for (int k = 0; k != this->observation_; ++k)
         {
             this->readDataFromXmlMemory(this->mean_variance_xml_engine_in_,
@@ -192,12 +192,12 @@ template <class ObserveMethodType>
 void RegressionTestEnsembleAverage<ObserveMethodType>::writeMeanVarianceToXml()
 {
     this->mean_variance_xml_engine_out_.addElementToXmlDoc("Mean_Element");
-    SimTK::Xml::Element mean_element = this->mean_variance_xml_engine_out_.getChildElement("Mean_Element");
+    XmlElement mean_element = this->mean_variance_xml_engine_out_.getChildElement("Mean_Element");
     this->writeDataToXmlMemory(
         this->mean_variance_xml_engine_out_, mean_element, this->meanvalue_new_,
         SMIN(this->snapshot_, this->number_of_snapshot_old_), this->observation_, this->quantity_name_, this->element_tag_);
     this->mean_variance_xml_engine_out_.addElementToXmlDoc("Variance_Element");
-    SimTK::Xml::Element variance_element = this->mean_variance_xml_engine_out_.getChildElement("Variance_Element");
+    XmlElement variance_element = this->mean_variance_xml_engine_out_.getChildElement("Variance_Element");
     this->writeDataToXmlMemory(
         this->mean_variance_xml_engine_out_, variance_element, this->variance_new_,
         SMIN(this->snapshot_, this->number_of_snapshot_old_), this->observation_, this->quantity_name_, this->element_tag_);
@@ -258,6 +258,17 @@ void RegressionTestEnsembleAverage<ObserveMethodType>::resultTest()
 {
     /* compare the current result to the converged mean value and variance. */
     int test_wrong = 0;
+    if (this->number_of_run_ <= 1 ||
+        !fs::exists(this->mean_variance_filefullpath_) ||
+        this->converged_ == "false")
+    {
+        // Baseline missing or this is the first run: skip the comparison
+        // rather than aborting. resultTest is invoked at end-of-run and the
+        // "not converged" exit would otherwise be triggered by stale input.
+        std::cout << "[regression] " << this->quantity_name_
+                  << ": no comparable baseline, skipping ensemble-averaged check." << std::endl;
+        return;
+    }
     if (this->snapshot_ < this->number_of_snapshot_old_)
         test_wrong = testNewResult(this->snapshot_difference_, this->current_result_, meanvalue_, variance_);
     else

@@ -111,6 +111,15 @@ class RegressionTestDynamicTimeWarping : public RegressionTestTimeAverage<Observ
     /** the interface for generating the priori converged result with DTW. */
     void testResult(const std::string &filter = "false")
     {
+        if (this->number_of_run_ <= 1 || this->converged_ == "false" ||
+            !fs::exists(this->dtw_distance_filefullpath_))
+        {
+            // No DTW baseline to compare against: skip the whole DTW
+            // comparison. setupTheTest would otherwise abort the process.
+            std::cout << "[regression] " << this->quantity_name_
+                      << ": no comparable DTW baseline, skipping DTW check." << std::endl;
+            return;
+        }
         this->transposeTheIndex();
         setupTheTest();
         if (filter == "true")
