@@ -4,19 +4,19 @@
 
 ## 项目简介
 
-`eulerian-SPH` 是 SPHinXsys 上游（`my_SPHinXsys`）的欧拉 SPH 专用分支。与一般 Lagrangian SPH 不同，欧拉 SPH 在固定背景网格上更新粒子场，借鉴有限体积法的 Riemann 解（HLLC + MUSCL 重构）处理对流项，从而：
+`eulerian-SPH` 是 SPHinXsys 上游（`my_SPHinXsys`）的欧拉 SPH 专用分支。与一般 Lagrangian SPH 不同，欧拉 SPH 以 Euler 视角在背景网格上更新守恒量，粒子在场内随流体输运，并借鉴有限体积法的 Riemann 解（HLLC + MUSCL 重构）处理对流项，从而：
 
 - 在大变形、强间断（如激波）下保持稳定；
 - 直接输出密度、压力、速度等守恒量，便于与网格参考解对照；
-- 同时支持弱可压缩（low-Mach）与可压缩（high-Mach）两种流体模型。
+- 同一框架下覆盖弱可压缩（low-Mach，主要用于圆柱绕流与 3D 通道）、可压缩粘性（如 3D 可压缩圆柱）与可压缩无粘（如超声速圆柱、激波管）等不同流体模型。
 
 本仓库聚焦于欧拉 SPH 相关算例与代码，包含：
 
-- **基础算例**：Taylor–Green 涡（粘性可压缩）、圆柱绕流（Re=100 弱可压缩 / 可压缩 / 超声速 Ma=2）；
-- **工业级算例**：3D 欧拉通道、跨声速压气机转子 Rotor 67；
-- **统一回归测试**：基于时间平均 / DTW / 集合平均，可在没有 baseline 时自动跳过，避免单点失败阻断整个 case。
+- **基础算例**：Taylor–Green 涡（粘性可压缩）、圆柱绕流（Re=100 弱可压缩 / 可压缩 / 超声速 Ma=2）、Lax 激波管；
+- **3D 算例**：3D 欧拉通道、3D 弱可压缩 / 可压缩圆柱绕流。
+- 未跑通或不在本 README 配图范围内的算例（参见 `tests/`）：见下方算例说明表。
 
-代码层面，所有算例都使用 **Laguerre–Gauss 核函数 + 线性梯度修正矩阵** 这套组合，并配合 Laguerre–Gauss 核的 `NoKernelCorrection` 选项控制壁面附近的核修正幅度，以抑制 contact 边界带来的奇偶振荡。
+代码层面，按算例差异选用不同核函数与修正策略：2D Taylor–Green 涡与 2D 超声速圆柱绕流显式使用 Laguerre–Gauss 核 + 线性梯度修正；2D / 3D 圆柱绕流使用默认核 + 线性梯度修正矩阵；Lax 激波管采用默认核 + `NoKernelCorrection`（关掉流体–壁面 contact 的核修正），以抑制接触附近的奇偶振荡。
 
 ## 计算结果展示
 
@@ -30,7 +30,7 @@
 可看到 SPH 解在激波、接触间断、稀疏波三段都能跟踪精确解，壁面附近无系统性跳变。
 
 **超声速圆柱绕流（`test_2d_eulerian_supersonic_flow_new_BC`，Ma=2）**  
-弓形激波 + 尾迹反射激波结构清晰可辨：
+弓形激波结构清晰可辨：
 
 ![Supersonic cylinder flow](docs/2d_eulerian_supersonic_flow_new_BC.png)
 
@@ -61,17 +61,16 @@
 |------|----------|----------|----------|
 | `test_2d_eulerian_taylor_green_LG` | Taylor–Green 涡，Re=100 | 可压缩 + 粘性 | 全周期 |
 | `test_2d_eulerian_flow_around_cylinder_LG` | 圆柱绕流，Re=100 | 弱可压缩 + 粘性 | 非反射远场 |
-| `test_2d_eulerian_supersonic_flow_new_BC` | 超声速圆柱绕流，Ma=2 | 可压缩（无粘）| 幽灵粒子（反射壁 + 远场）|
-| `test_2d_eulerian_shock_tube_LG` | Lax 激波管 | 可压缩 + Riemann | 反射壁 |
+| `test_2d_eulerian_supersonic_flow_new_BC` | 超声速圆柱绕流，Ma=2 | 可压缩（无粘）| 反射壁（ghost）+ 远场 |
+| `test_2d_eulerian_shock_tube_LG` | Lax 激波管 | 可压缩 + Riemann | x 反射壁 + y 周期 |
 
 ### 3D 算例
 
 | 算例 | 物理问题 | 流体模型 | 边界条件 |
 |------|----------|----------|----------|
 | `test_3d_eulerian_channel` | 欧拉通道流 | 弱可压缩 | 周期性 + 壁面 |
-| `test_3d_eulerian_flow_around_cylinder_LG` | 3D 圆柱绕流，Re=100 | 弱可压缩 + 粘性 | 非反射远场 |
-| `test_3d_eulerian_compressible_flow_around_cylinder_LG` | 3D 可压缩圆柱绕流 | 可压缩 + 粘性 | 远场 |
-| `test_3d_eulerian_rotor67` | 跨声速压气机转子 Rotor 67 | 可压缩 | 转子边界条件 |
+| `test_3d_eulerian_flow_around_cylinder_LG` | 3D 圆柱绕流，Re=100 | 弱可压缩 + 粘性 | 非反射远场 + z 周期 |
+| `test_3d_eulerian_compressible_flow_around_cylinder_LG` | 3D 可压缩圆柱绕流 | 可压缩 + 粘性 | 远场（ghost + 周期混合） |
 
 ## 目录结构
 
@@ -88,7 +87,7 @@ eulerian-SPH/
 │   │   ├── geometries/         # 几何形状（level set、复杂几何）
 │   │   ├── include/            # sphinxsys.h 聚合头
 │   │   ├── io_system/          # VTK / VTP / XML / 参数化
-│   │   ├── kernels/            # Wendland / Cubic / Laguerre–Gauss 等
+│   │   ├── kernels/            # Wendland C2 / Cubic B-spline / Laguerre–Gauss / Quadratic / Hyperbolic 等
 │   │   ├── materials/          # 弱可压缩流体、可压缩流体、固体…
 │   │   ├── mesh_dynamics/      # Level Set、邻居方法
 │   │   ├── meshes/             # CellLinkedList、SparseMeshField
@@ -112,8 +111,7 @@ eulerian-SPH/
     └── 3d_examples/
         ├── test_3d_eulerian_channel/
         ├── test_3d_eulerian_flow_around_cylinder_LG/
-        ├── test_3d_eulerian_compressible_flow_around_cylinder_LG/
-        └── test_3d_eulerian_rotor67/
+        └── test_3d_eulerian_compressible_flow_around_cylinder_LG/
 ```
 
 > **说明**：相对上游 `my_SPHinXsys`，本项目显式剔除了 Cell-linked List 加速后端（`shared_ck`），CMake 在 `src/shared/` 下做了 glob 防护，避免未来上游同步再次引入；Simbody 部分保留 `SimTK::SpatialVec` 等用于 FSI 与 3D 几何。
@@ -122,7 +120,7 @@ eulerian-SPH/
 
 本项目从上游 `my_SPHinXsys` 周期同步欧拉 SPH 相关代码：
 
-- 上游 `eulerian_fluid_dynamics`、`eulerian_ghost_boundary`、`eulerian_open_boundary`、`domain_bounding`、`continuum_dynamics` 等同步到 `src/shared`；
+- 上游 `eulerian_fluid_dynamics`（在 `particle_dynamics/fluid_dynamics/eulerian_fluid_dynamics/`）、`eulerian_ghost_boundary` 与 `eulerian_open_boundary`（在 `particle_dynamics/general_dynamics/boundary_condition/`）、`domain_bounding`（上游目录名为 `domian_bouding`，已保留原拼写）、`continuum_dynamics`（在 `particle_dynamics/continuum_dynamics/`）等同步到 `src/shared`；
 - 每次同步后只保留 ESPH 入口路径需要的文件，明确剔除 `shared_ck`；
 - 同步流程与冲突解决详见 `task_plan.md`。
 
@@ -233,10 +231,11 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build --target test_2d_eulerian_taylor_green_LG --parallel 8
 
 cd tests/2d_examples/test_2d_eulerian_taylor_green_LG
-../../../build/tests/2d_examples/test_2d_eulerian_taylor_green_LG/bin/Release/test_2d_eulerian_taylor_green_LG
+../../../build/tests/2d_examples/test_2d_eulerian_taylor_green_LG/bin/test_2d_eulerian_taylor_green_LG
 ```
 
-> **注意**：MSVC 多配置生成器会在 `bin/` 下再建 `Release/` 子目录，完整路径为  
+> **注意**：Linux + Ninja 单配置生成器下，二进制直接在 `bin/` 下；若在 Windows 上改用
+> `-G "Visual Studio 18 2026" -A x64`（多配置），则编译产物路径为
 > `build/tests/2d_examples/<test_name>/bin/Release/<test_name>.exe`
 
 如果之后在宿主机修改了 `src/`、`tests/` 或 `CMakeLists.txt`，只需回到容器内重新执行：
@@ -259,9 +258,9 @@ cmake --build build --target <target_name> --parallel 8
 圆柱绕流算例如果要先做粒子松弛，再加载松弛结果正式运行，可在容器内或通过 `docker run` 传参执行。
 
 ```bash
-/workspace/build/tests/2d_examples/test_2d_eulerian_flow_around_cylinder_LG/bin/Release/test_2d_eulerian_flow_around_cylinder_LG --relax=true
+/workspace/build/tests/2d_examples/test_2d_eulerian_flow_around_cylinder_LG/bin/test_2d_eulerian_flow_around_cylinder_LG --relax=true
 
-/workspace/build/tests/2d_examples/test_2d_eulerian_flow_around_cylinder_LG/bin/Release/test_2d_eulerian_flow_around_cylinder_LG --reload=true
+/workspace/build/tests/2d_examples/test_2d_eulerian_flow_around_cylinder_LG/bin/test_2d_eulerian_flow_around_cylinder_LG --reload=true
 ```
 
 #### 7. 常用环境变量
@@ -283,10 +282,10 @@ cmake --build build --target <target_name> --parallel 8
 
 ```bash
 # Ubuntu / Debian
-sudo apt install cmake g++ libeigen3-dev libtbb-dev libboost-dev libboost-program-options-dev libspdlog-dev libfmt-dev libsimbody-dev libgtest-dev
+sudo apt install cmake g++ libeigen3-dev libtbb-dev libboost-dev libboost-program-options-dev libboost-geometry-dev libspdlog-dev libfmt-dev libsimbody-dev libgtest-dev
 
 # CentOS / RHEL
-sudo dnf install cmake gcc-c++ eigen3-devel tbb-devel boost-devel boost-program-options spdlog-devel fmt-devel simbody-devel gtest-devel
+sudo dnf install cmake gcc-c++ eigen3-devel tbb-devel boost-devel boost-program-options boost-geometry spdlog-devel fmt-devel simbody-devel gtest-devel
 ```
 
 ### 超算 / 无 root 环境（手动编译安装）
@@ -413,7 +412,6 @@ cmake --build "$BUILD_DIR" --target test_2d_eulerian_supersonic_flow_new_BC     
 cmake --build "$BUILD_DIR" --target test_3d_eulerian_channel                      --config Release -j$(nproc)
 cmake --build "$BUILD_DIR" --target test_3d_eulerian_compressible_flow_around_cylinder_LG --config Release -j$(nproc)
 cmake --build "$BUILD_DIR" --target test_3d_eulerian_flow_around_cylinder_LG      --config Release -j$(nproc)
-cmake --build "$BUILD_DIR" --target test_3d_eulerian_rotor67                      --config Release -j$(nproc)
 
 # 或一次编译全部算例
 cmake --build "$BUILD_DIR" --config Release -j$(nproc)
@@ -461,7 +459,7 @@ cmake --build build --target test_2d_eulerian_supersonic_flow_new_BC  --config R
 
 cmake --build build --target test_3d_eulerian_channel                      --config Release
 cmake --build build --target test_3d_eulerian_flow_around_cylinder_LG      --config Release
-cmake --build build --target test_3d_eulerian_rotor67                      --config Release
+cmake --build build --target test_3d_eulerian_compressible_flow_around_cylinder_LG --config Release
 
 # 或编译全部
 cmake --build build --config Release
@@ -492,23 +490,29 @@ export LD_LIBRARY_PATH=$HOME/deps/tbb/lib64:$HOME/deps/simbody/lib64:$LD_LIBRARY
 ```bash
 # 2D Taylor-Green 涡
 cd tests/2d_examples/test_2d_eulerian_taylor_green_LG
-../../../../build/tests/2d_examples/test_2d_eulerian_taylor_green_LG/bin/Release/test_2d_eulerian_taylor_green_LG
+../../../../build/tests/2d_examples/test_2d_eulerian_taylor_green_LG/bin/test_2d_eulerian_taylor_green_LG
 
 # 2D 圆柱绕流（弱可压缩，Re=100）
 cd tests/2d_examples/test_2d_eulerian_flow_around_cylinder_LG
-../../../../build/tests/2d_examples/test_2d_eulerian_flow_around_cylinder_LG/bin/Release/test_2d_eulerian_flow_around_cylinder_LG
+../../../../build/tests/2d_examples/test_2d_eulerian_flow_around_cylinder_LG/bin/test_2d_eulerian_flow_around_cylinder_LG
 
 # 2D 超声速圆柱绕流（Ma=2）
 cd tests/2d_examples/test_2d_eulerian_supersonic_flow_new_BC
-../../../../build/tests/2d_examples/test_2d_eulerian_supersonic_flow_new_BC/bin/Release/test_2d_eulerian_supersonic_flow_new_BC
+../../../../build/tests/2d_examples/test_2d_eulerian_supersonic_flow_new_BC/bin/test_2d_eulerian_supersonic_flow_new_BC
 
 # 3D 欧拉通道
 cd tests/3d_examples/test_3d_eulerian_channel
-../../../../build/tests/3d_examples/test_3d_eulerian_channel/bin/Release/test_3d_eulerian_channel
+../../../../build/tests/3d_examples/test_3d_eulerian_channel/bin/test_3d_eulerian_channel
 
 # 3D 圆柱绕流
 cd tests/3d_examples/test_3d_eulerian_flow_around_cylinder_LG
-../../../../build/tests/3d_examples/test_3d_eulerian_flow_around_cylinder_LG/bin/Release/test_3d_eulerian_flow_around_cylinder_LG
+../../../../build/tests/3d_examples/test_3d_eulerian_flow_around_cylinder_LG/bin/test_3d_eulerian_flow_around_cylinder_LG
+
+# 3D 可压缩圆柱绕流
+cd tests/3d_examples/test_3d_eulerian_compressible_flow_around_cylinder_LG
+../../../../build/tests/3d_examples/test_3d_eulerian_compressible_flow_around_cylinder_LG/bin/test_3d_eulerian_compressible_flow_around_cylinder_LG
 ```
+
+> **注意**：以上路径以 Linux + Ninja 单配置为例；二进制直接在 `bin/` 下。Windows + MSVC 多配置生成器需要在 `bin/` 后再加 `Release/`（或 `Debug/`）子目录。
 
 结果写入 `output/`（VTP 格式），可用 [ParaView](https://www.paraview.org) 打开。

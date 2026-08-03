@@ -10,6 +10,7 @@ RUN apt-get update \
         cmake \
         libboost-dev \
         libboost-program-options-dev \
+        libboost-geometry-dev \
         libeigen3-dev \
         libfmt-dev \
         libspdlog-dev \
