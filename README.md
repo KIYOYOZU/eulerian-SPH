@@ -63,6 +63,8 @@
 | `test_2d_eulerian_flow_around_cylinder_LG` | 圆柱绕流，Re=100 | 弱可压缩 + 粘性 | 非反射远场 |
 | `test_2d_eulerian_supersonic_flow_new_BC` | 超声速圆柱绕流，Ma=2 | 可压缩（无粘）| 反射壁（ghost）+ 远场 |
 | `test_2d_eulerian_shock_tube_LG` | Lax 激波管 | 可压缩 + Riemann | x 反射壁 + y 周期 |
+| `test_2d_eulerian_multiphase_shock_tube` | 气-水 / 双气体激波管 | Kapila 五方程 + stiffened gas | x 反射壁 + y 周期 |
+| `test_2d_eulerian_multiphase_shock_bubble` | 激波-气泡相互作用（水中气泡，左行水激波） | Kapila 五方程 + stiffened gas | 四边反射壁（右 reservoir 扩展） |
 
 ### 3D 算例
 
