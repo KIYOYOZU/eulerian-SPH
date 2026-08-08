@@ -21,21 +21,55 @@
  *                                                                           *
  * ------------------------------------------------------------------------- */
 /**
- * @file 	all_materials.h
- * @brief 	This is the header file for materials.
- * @author	Chi Zhang and Xiangyu Hu
+ * @file    stiffened_gas.h
+ * @brief   Stiffened gas equation of state for compressible multiphase flows.
+ *          EOS: p = (gamma - 1) * rho * e - gamma * p_inf
+ *          Sound speed: c = sqrt(gamma * (p + p_inf) / rho)
+ * @author  KIYOYOZU
  */
 
-#pragma once
+#ifndef STIFFENED_GAS_H
+#define STIFFENED_GAS_H
 
 #include "base_material.h"
-#include "complex_solid.hpp"
-#include "compressible_fluid.h"
-#include "diffusion_reaction.h"
-#include "elastic_solid.h"
-#include "general_continuum.hpp"
-#include "inelastic_solid.hpp"
-#include "viscosity.h"
-#include "weakly_compressible_fluid.h"
-#include "stiffened_gas.h"
-#include "multiphase_mixture.h"
+
+namespace SPH
+{
+/**
+ * @class StiffenedGas
+ * @brief Stiffened gas equation of state.
+ *        Widely used for modeling water and other liquids in
+ *        compressible multiphase flow simulations.
+ */
+class StiffenedGas : public Fluid
+{
+  protected:
+    Real gamma_;  /**< heat capacity ratio */
+    Real p_inf_;  /**< reference (stiffness) pressure */
+
+  public:
+    explicit StiffenedGas(Real gamma, Real p_inf);
+    virtual ~StiffenedGas();
+
+    virtual Real ReferenceDensity() const override { return 1.0; };
+    virtual Real ReferenceSoundSpeed() const override { return 1.0; };
+
+    Real HeatCapacityRatio() const { return gamma_; };
+    Real ReferencePressure() const { return p_inf_; };
+
+    /** Pressure from density and internal energy per unit volume:
+     *  p = (gamma - 1) * rho_e - gamma * p_inf */
+    virtual Real getPressure(Real rho, Real rho_e) override;
+    virtual Real getPressure(Real rho) override { return 0.0; };
+    virtual Real DensityFromPressure(Real p) override { return 0.0; };
+
+    /** Sound speed: c = sqrt(gamma * (p + p_inf) / rho) */
+    virtual Real getSoundSpeed(Real p, Real rho) override;
+
+    /** Internal energy per unit volume from density and pressure:
+     *  rho_e = (p + gamma * p_inf) / (gamma - 1) */
+    Real InternalEnergyPerVolume(Real rho, Real p) const;
+};
+} // namespace SPH
+
+#endif // STIFFENED_GAS_H

@@ -33,4 +33,6 @@
 #pragma once
 
 #include "eulerian_compressible_fluid_integration.hpp"
+#include "eulerian_multiphase_integration.h"
+#include "eulerian_multiphase_riemann_solver.h"
 #include "eulerian_fluid_integration.hpp"

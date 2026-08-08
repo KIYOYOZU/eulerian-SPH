@@ -36,9 +36,14 @@ enum class SlopeLimiter : int {
 struct SecondOrderConfig
 {
     SlopeLimiter limiter      = SlopeLimiter::Minmod;
-    bool         positivity   = true;    
-    Real         small        = 1e-12;   
+    bool         positivity   = true;
+    Real         small        = 1e-12;
     Real         gamma        = 1.4;     // ideal-gas gamma for EOS-based energy
+    // Five-equation bridge only: keep rho and alpha piecewise constant at
+    // interfaces (vel+p reconstruction only). Recommended for stiff material
+    // interfaces (e.g. gas-water), where reconstructing rho/alpha across the
+    // gamma/p_inf jump drives velocity/pressure spikes at the contact.
+    bool         piecewise_rho_alpha = false;
 };
 
 /// Scalar limiters (standalone, inlined)

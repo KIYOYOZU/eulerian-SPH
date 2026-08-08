@@ -50,6 +50,7 @@ AGENTS.md
 **/restart
 **/results
 **/reload
+**/output*
 
 # WorkBuddy data
 .workbuddy/
@@ -67,3 +68,11 @@ tests/3d_examples/test_3d_eulerian_rotor67/docu/R67_CFX/rotor67_domain.stl
 # Python bytecode
 **/__pycache__/
 **/*.pyc
+
+# Docs directories (readme images, build logs, run logs)
+docs/
+**/docs/
+
+# Text files (excluding CMakeLists.txt which is part of the build system)
+*.txt
+!CMakeLists.txt
