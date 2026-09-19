@@ -23,9 +23,12 @@ class MultiPhaseShockTubeCsvProbe
   public:
     MultiPhaseShockTubeCsvProbe(BaseParticles &particles)
         : particles_(particles),
-          // Source dir is baked in by CMake as CASE_SOURCE_DIR so the probe
-          // always writes to <case>/output regardless of the executable's cwd.
-          output_dir_((std::filesystem::path(CASE_SOURCE_DIR) / "output").string()),
+          // CSV dumps go to output/ next to the resolved config.ini, so each
+          // case folder (cases/<name>/) keeps its own data when running from it
+          output_dir_((std::filesystem::path(mp_cfg_detail::resolvePath())
+                           .parent_path() /
+                       "output")
+                          .string()),
           pos_(particles.getVariableDataByName<Vecd>("Position")),
           rho_(particles.getVariableDataByName<Real>("Density")),
           p_(particles.getVariableDataByName<Real>("Pressure")),
@@ -106,6 +109,12 @@ int main(int ac, char *av[])
     sph_system.setRunParticleRelaxation(false);
     sph_system.setReloadParticles(false);
     sph_system.handleCommandlineOptions(ac, av);
+    // run from a case folder (cases/<name>/): vtp output lands in its own
+    // output/ next to the config.ini that resolvePath() picked up
+    std::string out_root = std::filesystem::path(mp_cfg_detail::resolvePath())
+                               .parent_path()
+                               .generic_string();
+    IO::getEnvironment().resetOutputFolder(out_root + "/output");
     //----------------------------------------------------------------------
     //	Creating body, materials and particles.
     //----------------------------------------------------------------------

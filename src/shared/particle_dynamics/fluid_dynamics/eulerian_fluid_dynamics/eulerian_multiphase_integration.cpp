@@ -31,7 +31,8 @@ BaseIntegrationInMultiphase::BaseIntegrationInMultiphase(
       dalpha_dt_(particles_->registerStateVariableData<Real>("VolumeFractionChangeRate")),
       mom_(particles_->registerStateVariableData<Vecd>("Momentum")),
       force_(particles_->registerStateVariableData<Vecd>("Force")),
-      force_prior_(particles_->registerStateVariableData<Vecd>("ForcePrior")) {};
+      force_prior_(particles_->registerStateVariableData<Vecd>("ForcePrior")),
+      grad_corr_(particles_->registerStateVariableData<Vecd>("GradientCorrection")) {};
 //=================================================================================================//
 //	First half step: Inner<>
 //=================================================================================================//
@@ -59,9 +60,12 @@ void EulerianMultiphaseIntegration1stHalf<Inner<>>::interaction(size_t index_i, 
         MultiphaseFluidStarState interface_state =
             riemann_solver_.getInterfaceState(state_i, state_j, e_ij);
 
+        // zeroth-order consistent gradient: dW e V_j - c_i V_j closes the
+        // first moment on graded lattices (no-op where grad_corr_ ~ 0)
+        Vecd gradW_V_j = dW_ijV_j * e_ij - grad_corr_[index_i] * Vol_[index_j];
         Matd convect_flux = interface_state.rho_ * interface_state.vel_ * interface_state.vel_.transpose();
-        momentum_change_rate -= 2.0 * Vol_[index_i] * dW_ijV_j *
-                                (convect_flux + interface_state.p_ * Matd::Identity()) * e_ij;
+        momentum_change_rate -= 2.0 * Vol_[index_i] *
+                                (convect_flux + interface_state.p_ * Matd::Identity()) * gradW_V_j;
     }
     force_[index_i] = momentum_change_rate;
 }
@@ -110,9 +114,11 @@ void EulerianMultiphaseIntegration1stHalf<Contact<Wall>>::interaction(size_t ind
             MultiphaseFluidStarState interface_state =
                 riemann_solver_.getInterfaceState(state_i, state_g, e_ij);
 
+            // fluid-side c_i closes the mirror wall stencil too
+            Vecd gradW_V_j = dW_ijV_j * e_ij - grad_corr_[index_i] * Vol_k[index_j];
             Matd convect_flux = interface_state.rho_ * interface_state.vel_ * interface_state.vel_.transpose();
-            momentum_change_rate -= 2.0 * this->Vol_[index_i] * dW_ijV_j *
-                                    (convect_flux + interface_state.p_ * Matd::Identity()) * e_ij;
+            momentum_change_rate -= 2.0 * this->Vol_[index_i] *
+                                    (convect_flux + interface_state.p_ * Matd::Identity()) * gradW_V_j;
         }
     }
     this->force_[index_i] += momentum_change_rate;
@@ -150,16 +156,20 @@ void EulerianMultiphaseIntegration2ndHalf<Inner<>>::interaction(size_t index_i, 
         MultiphaseFluidStarState interface_state =
             riemann_solver_.getInterfaceState(state_i, state_j, e_ij);
 
+        // zeroth-order consistent gradient for the conservative channels
+        Vecd gradW_V_j = dW_ijV_j * e_ij - grad_corr_[index_i] * Vol_[index_j];
+
         // Mass flux: div(rho * u)
-        mass_change_rate -= 2.0 * Vol_[index_i] * dW_ijV_j *
-                            (interface_state.rho_ * interface_state.vel_).dot(e_ij);
+        mass_change_rate -= 2.0 * Vol_[index_i] *
+                            (interface_state.rho_ * interface_state.vel_).dot(gradW_V_j);
 
         // Energy flux: div((rho*E + p) * u)
-        energy_change_rate -= 2.0 * Vol_[index_i] * dW_ijV_j *
-                              ((interface_state.E_ + interface_state.p_) * interface_state.vel_).dot(e_ij);
+        energy_change_rate -= 2.0 * Vol_[index_i] *
+                              ((interface_state.E_ + interface_state.p_) * interface_state.vel_).dot(gradW_V_j);
 
         // Volume fraction advection (non-conservative form):
-        // d(alpha)/dt = -u . grad(alpha)
+        // d(alpha)/dt = -u . grad(alpha). Difference form (alpha_i - alpha*),
+        // already immune to the first moment, so the raw dW_ijV_j e_ij is kept.
         Real u_star_n = interface_state.vel_.dot(e_ij);
         alpha_change_rate += 2.0 * Vol_[index_i] * dW_ijV_j * u_star_n *
                              (alpha_[index_i] - interface_state.alpha_);
@@ -220,10 +230,11 @@ void EulerianMultiphaseIntegration2ndHalf<Contact<Wall>>::interaction(size_t ind
             MultiphaseFluidStarState interface_state =
                 riemann_solver_.getInterfaceState(state_i, state_g, e_ij);
 
-            mass_change_rate -= 2.0 * this->Vol_[index_i] * dW_ijV_j *
-                                (interface_state.rho_ * interface_state.vel_).dot(e_ij);
-            energy_change_rate -= 2.0 * this->Vol_[index_i] * dW_ijV_j *
-                                  ((interface_state.E_ + interface_state.p_) * interface_state.vel_).dot(e_ij);
+            Vecd gradW_V_j = dW_ijV_j * e_ij - grad_corr_[index_i] * Vol_k[index_j];
+            mass_change_rate -= 2.0 * this->Vol_[index_i] *
+                                (interface_state.rho_ * interface_state.vel_).dot(gradW_V_j);
+            energy_change_rate -= 2.0 * this->Vol_[index_i] *
+                                  ((interface_state.E_ + interface_state.p_) * interface_state.vel_).dot(gradW_V_j);
 
             Real u_star_n = interface_state.vel_.dot(e_ij);
             alpha_change_rate += 2.0 * this->Vol_[index_i] * dW_ijV_j * u_star_n *
@@ -339,9 +350,10 @@ void EulerianMultiphaseIntegration1stHalfMUSCL<Inner<>>::interaction(size_t inde
             p_grad_[index_i], p_grad_[index_j],
             alpha_grad_[index_i], alpha_grad_[index_j]);
 
+        Vecd gradW_V_j = dW_ijV_j * e_ij - grad_corr_[index_i] * Vol_[index_j];
         Matd convect_flux = interface_state.rho_ * interface_state.vel_ * interface_state.vel_.transpose();
-        momentum_change_rate -= 2.0 * Vol_[index_i] * dW_ijV_j *
-                                (convect_flux + interface_state.p_ * Matd::Identity()) * e_ij;
+        momentum_change_rate -= 2.0 * Vol_[index_i] *
+                                (convect_flux + interface_state.p_ * Matd::Identity()) * gradW_V_j;
     }
     force_[index_i] = momentum_change_rate;
 }
@@ -405,10 +417,11 @@ void EulerianMultiphaseIntegration2ndHalfMUSCL<Inner<>>::interaction(size_t inde
             p_grad_[index_i], p_grad_[index_j],
             alpha_grad_[index_i], alpha_grad_[index_j]);
 
-        mass_change_rate -= 2.0 * Vol_[index_i] * dW_ijV_j *
-                            (interface_state.rho_ * interface_state.vel_).dot(e_ij);
-        energy_change_rate -= 2.0 * Vol_[index_i] * dW_ijV_j *
-                              ((interface_state.E_ + interface_state.p_) * interface_state.vel_).dot(e_ij);
+        Vecd gradW_V_j = dW_ijV_j * e_ij - grad_corr_[index_i] * Vol_[index_j];
+        mass_change_rate -= 2.0 * Vol_[index_i] *
+                            (interface_state.rho_ * interface_state.vel_).dot(gradW_V_j);
+        energy_change_rate -= 2.0 * Vol_[index_i] *
+                              ((interface_state.E_ + interface_state.p_) * interface_state.vel_).dot(gradW_V_j);
 
         Real u_star_n = interface_state.vel_.dot(e_ij);
         alpha_change_rate += 2.0 * Vol_[index_i] * dW_ijV_j * u_star_n *
@@ -499,9 +512,10 @@ void EulerianMultiphaseIntegration1stHalfMUSCL<Contact<Wall>>::interaction(size_
                 p_grad_[index_i], p_grad_[index_i],
                 zero, zero);
 
+            Vecd gradW_V_j = dW_ijV_j * e_ij - grad_corr_[index_i] * Vol_k[index_j];
             Matd convect_flux = interface_state.rho_ * interface_state.vel_ * interface_state.vel_.transpose();
-            momentum_change_rate -= 2.0 * this->Vol_[index_i] * dW_ijV_j *
-                                    (convect_flux + interface_state.p_ * Matd::Identity()) * e_ij;
+            momentum_change_rate -= 2.0 * this->Vol_[index_i] *
+                                    (convect_flux + interface_state.p_ * Matd::Identity()) * gradW_V_j;
         }
     }
     this->force_[index_i] += momentum_change_rate;
@@ -566,13 +580,15 @@ void EulerianMultiphaseIntegration2ndHalfMUSCL<Contact<Wall>>::interaction(size_
                 p_grad_[index_i], p_grad_[index_i],
                 zero, zero);
 
-            mass_change_rate -= 2.0 * this->Vol_[index_i] * dW_ijV_j *
-                                (interface_state.rho_ * interface_state.vel_).dot(e_ij);
-            energy_change_rate -= 2.0 * this->Vol_[index_i] * dW_ijV_j *
-                                  ((interface_state.E_ + interface_state.p_) * interface_state.vel_).dot(e_ij);
+            Vecd gradW_V_j = dW_ijV_j * e_ij - grad_corr_[index_i] * Vol_k[index_j];
+            mass_change_rate -= 2.0 * this->Vol_[index_i] *
+                                (interface_state.rho_ * interface_state.vel_).dot(gradW_V_j);
+            energy_change_rate -= 2.0 * this->Vol_[index_i] *
+                                  ((interface_state.E_ + interface_state.p_) * interface_state.vel_).dot(gradW_V_j);
 
             // Identically zero for the mirrored ghost (alpha_g = alpha_i), kept
-            // for structural parity with the first-order wall pass.
+            // for structural parity with the first-order wall pass. Difference
+            // form, so it keeps the raw dW_ijV_j e_ij (first-moment immune).
             Real u_star_n = interface_state.vel_.dot(e_ij);
             alpha_change_rate += 2.0 * this->Vol_[index_i] * dW_ijV_j * u_star_n *
                                  (this->alpha_[index_i] - interface_state.alpha_);

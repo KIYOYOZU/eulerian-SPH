@@ -76,3 +76,10 @@ docs/
 # Text files (excluding CMakeLists.txt which is part of the build system)
 *.txt
 !CMakeLists.txt
+papers/
+
+# Gate analysis CSV snapshots (test working data)
+gate_csv/
+.zcode
+.zcodeignore
+tests/2d_examples/test_2d_eulerian_multiphase_shock_tube_asr/PROJECT_NOTES.md

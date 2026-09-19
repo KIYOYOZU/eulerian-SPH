@@ -1,26 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Post-process for the 2D Eulerian SPH multiphase shock tube (Kapila
-five-equation model, stiffened gas EOS).
+Post-process for the 2D Eulerian SPH multiphase shock tube with the
+particle-band ASR (Kapila five-equation model, stiffened gas EOS).
 
-Two modes, auto-detected from the data:
+Per-case layout: each case folder cases/<name>/ holds config.ini, output/
+(CSV dumps tagged config[_uniform]) and results/. This script bins the
+y-periodic slab along x, checks alpha in [0,1], overlays the exact
+two-phase Riemann solution and adds the ASR-specific view: the per-
+particle reference spacing (i.e. the adaptive resolution field) against
+x, so the fine-band tracking of the material contact is visible.
 
-  * Sod mode (TEST_CASE==2): two ideal-gas materials, alpha=1 | alpha=0, Sod
-    states. The mixture reduces to the ideal-gas Euler equations, so rho/p/u
-    are compared against the exact Sod (Toro) solution and alpha against the
-    material contact riding on the Sod contact. This reproduces the classic
-    rarefaction-fan + contact + shock curves.
-
-  * Gas-water mode (TEST_CASE==1): high-pressure gas | water. Compared against
-    the exact two-phase Riemann solution (gas isentropic rarefaction + water
-    stiffened-gas shock Hugoniot).
-
-Reads particles_<step>.csv (columns x, y, rho, p, u, alpha), bins along x,
-checks alpha in [0,1], overlays the exact solution and saves a figure.
-
-Usage (from inside a case folder, e.g. cases/twogas/):
-    python ../../postprocess_multiphase_shock_tube.py [step]
+Usage:
+    python postprocess_asr.py <case_name> [step]
+e.g.
+    python postprocess_asr.py twogas
+    python postprocess_asr.py gaswater 526
 """
 
 import os
@@ -34,16 +29,16 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-DOMAIN_X0, DOMAIN_X1 = 0.0, 1.0
+CASE_ROOT = os.path.dirname(os.path.abspath(__file__))
 
-# ---------------- Sod-like two-gas (TEST_CASE==2) parameters -------------
+# ---------------- two-gas (cases/twogas) parameters -----------------------
 SOD_GAMMA_L, SOD_PINF_L = 1.4, 0.0
 SOD_GAMMA_R, SOD_PINF_R = 1.6, 0.0
 SOD_RHO_L, SOD_P_L, SOD_U_L = 1.0, 0.425, 0.0
 SOD_RHO_R, SOD_P_R, SOD_U_R = 0.125, 0.1, 0.0
 SOD_X0 = 0.5
 
-# ---------------- Gas-water (TEST_CASE==1) parameters ---------------------
+# ---------------- gas-water (cases/gaswater) parameters ------------------
 GW_GAMMA_L, GW_PINF_L = 1.4, 0.0
 GW_GAMMA_R, GW_PINF_R = 4.4, 6.0e8
 GW_RHO_L, GW_P_L, GW_U_L = 1.4, 1.0e6, 0.0
@@ -104,7 +99,7 @@ def tp_exact_solution(x, t, cfg):
         p_star = p_new
     fL, _ = _wave_f(p_star, gL, piL, rL, pL)
     fR, _ = _wave_f(p_star, gR, piR, rR, pR)
-    u_star = 0.5 * (uL + uR + fR - fL)
+    u_star = 0.5 * (uL + uL + fR - fL) if False else 0.5 * (uL + uR + fR - fL)
 
     cL = _c(gL, piL, pL, rL)
     cR = _c(gR, piR, pR, rR)
@@ -187,12 +182,16 @@ def make_cfg(sod_mode):
 
 
 # =====================================================================
+# CSV columns: x,y,rho,p,u,v,alpha,Vol,band,h_ratio,ref_spacing,rho_raw,p_raw
+COL = dict(x=0, rho=2, p=3, u=4, alpha=6, ds=10)
+
+
 def load_particles(csv_path):
     return np.loadtxt(csv_path, delimiter=",", skiprows=1)
 
 
-def bin_profile(data, n_bins):
-    x_edges = np.linspace(DOMAIN_X0, DOMAIN_X1, n_bins + 1)
+def bin_profile(data, n_bins, x0, x1):
+    x_edges = np.linspace(x0, x1, n_bins + 1)
     centers = 0.5 * (x_edges[:-1] + x_edges[1:])
     rho = np.zeros(n_bins)
     p = np.zeros(n_bins)
@@ -200,12 +199,12 @@ def bin_profile(data, n_bins):
     alpha = np.zeros(n_bins)
     cnt = np.zeros(n_bins, dtype=int)
     for row in data:
-        idx = int((row[0] - DOMAIN_X0) / (DOMAIN_X1 - DOMAIN_X0) * n_bins)
+        idx = int((row[COL["x"]] - x0) / (x1 - x0) * n_bins)
         idx = min(max(idx, 0), n_bins - 1)
-        rho[idx] += row[2]
-        p[idx] += row[3]
-        u[idx] += row[4]
-        alpha[idx] += row[5]
+        rho[idx] += row[COL["rho"]]
+        p[idx] += row[COL["p"]]
+        u[idx] += row[COL["u"]]
+        alpha[idx] += row[COL["alpha"]]
         cnt[idx] += 1
     mask = cnt > 0
     rho[mask] /= cnt[mask]
@@ -216,32 +215,50 @@ def bin_profile(data, n_bins):
 
 
 def main():
-    # operate on the case folder the script is invoked from
-    out_dir = os.path.join(os.getcwd(), "output")
-    res_dir = os.path.join(os.getcwd(), "results")
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+        print(__doc__)
+        return 1
+    case_name = sys.argv[1]
+    # accept a bare case name (resolved under CASE_ROOT/cases/) or a path to a
+    # case directory holding output/
+    if os.path.isdir(os.path.join(CASE_ROOT, "cases", case_name)):
+        case_dir = os.path.join(CASE_ROOT, "cases", case_name)
+    elif os.path.isdir(case_name):
+        case_dir = os.path.abspath(case_name)
+    else:
+        print(f"Unknown case '{case_name}': not under cases/ and not a directory")
+        return 1
+    out_dir = os.path.join(case_dir, "output")
+    res_dir = os.path.join(case_dir, "results")
+    if not os.path.isdir(out_dir):
+        print(f"No output/ under cases/{case_name}")
+        return 1
     os.makedirs(res_dir, exist_ok=True)
 
-    if len(sys.argv) > 1:
-        step = sys.argv[1]
-        csv_path = os.path.join(out_dir, f"particles_{step}.csv")
-    else:
-        csvs = sorted(glob.glob(os.path.join(out_dir, "particles_*.csv")),
-                      key=lambda p: int(os.path.basename(p)[len("particles_"):-len(".csv")]))
-        if not csvs:
-            print(f"No particles_*.csv found in {out_dir}")
-            sys.exit(1)
-        csv_path = csvs[-1]
-        step = os.path.basename(csv_path)[len("particles_"):-len(".csv")]
+    csvs = sorted(glob.glob(os.path.join(out_dir, "*_particles_*.csv")),
+                  key=lambda p: int(os.path.basename(p)[:-4].rsplit("_", 1)[-1]))
+    if not csvs:
+        print(f"No *_particles_*.csv found in {out_dir}")
+        return 1
+    if len(sys.argv) > 2:
+        step = sys.argv[2]
+        csv_path = os.path.join(out_dir, f"config_particles_{step}.csv")
+        csvs = [c for c in csvs if c.endswith(f"particles_{step}.csv")] or [csv_path]
+    csv_path = csvs[-1]
+    base = os.path.basename(csv_path)
+    step = base[:-4].rsplit("_", 1)[-1]
 
-    time_path = os.path.join(out_dir, f"time_{step}.txt")
+    time_path = os.path.join(out_dir, f"config_time_{step}.txt")
     t = float(open(time_path).read().strip()) if os.path.exists(time_path) else 0.0
 
     data = load_particles(csv_path)
-    sod_mode = data[:, 2].max() < 10.0  # Sod densities <= ~1; gas-water reaches 1000
+    x0 = float(data[:, COL["x"]].min())
+    x1 = float(data[:, COL["x"]].max())
+    sod_mode = data[:, COL["rho"]].max() < 10.0  # Sod densities <= ~1; gas-water reaches 1000
     n_bins = 400 if sod_mode else 200
-    centers, rho_n, p_n, u_n, alpha_n, cnt = bin_profile(data, n_bins)
+    centers, rho_n, p_n, u_n, alpha_n, cnt = bin_profile(data, n_bins, x0, x1)
 
-    alpha_raw = data[:, 5]
+    alpha_raw = data[:, COL["alpha"]]
     a_min, a_max = float(alpha_raw.min()), float(alpha_raw.max())
     bounded = (a_min >= -1e-8) and (a_max <= 1 + 1e-8)
 
@@ -251,13 +268,13 @@ def main():
     mode = "two-gas Sod (g=1.4|1.6)" if sod_mode else "gas-water"
 
     mask = cnt > 0
-    dx = (DOMAIN_X1 - DOMAIN_X0) / len(centers)
+    dx = (x1 - x0) / len(centers)
     l1_rho = float(np.sum(np.abs(rho_n[mask] - rho_e[mask])) * dx)
     l1_p = float(np.sum(np.abs(p_n[mask] - p_e[mask])) * dx)
     l1_u = float(np.sum(np.abs(u_n[mask] - u_e[mask])) * dx)
 
     summary = (
-        f"[{mode}] multiphase shock tube at t={t:.6e} (step={step})\n"
+        f"[{mode}] multiphase shock tube with particle-band ASR at t={t:.6e} (step={step})\n"
         f"  particles  : {data.shape[0]}\n"
         f"  alpha range: [{a_min:.6f}, {a_max:.6f}]  bounded={bounded}\n"
         f"  exact      : p*={meta['p_star']:.6e}  u*={meta['u_star']:.4f}  contact x={meta['x_contact']:.5f}\n"
@@ -267,24 +284,32 @@ def main():
     with open(os.path.join(res_dir, "profile_summary.txt"), "w") as f:
         f.write(summary)
 
-    x_ref = np.linspace(DOMAIN_X0, DOMAIN_X1, 2000)
+    x_ref = np.linspace(x0, x1, 2000)
     rE, pE, uE, aE, _ = tp_exact_solution(x_ref, tt, cfg)
 
-    fig, axes = plt.subplots(4, 1, figsize=(8, 11), sharex=True)
-    titles = ["Density", "Pressure", "Velocity (x)", r"Volume fraction $\alpha_1$"]
-    sph = [rho_n, p_n, u_n, alpha_n]
-    ext = [rE, pE, uE, aE]
-    for ax, ttl, ss, ee in zip(axes, titles, sph, ext):
-        ax.plot(x_ref, ee, "k-", lw=1.5, label="exact")
-        ax.plot(centers[mask], ss[mask], "r.", ms=3, label="SPH")
+    fig, axes = plt.subplots(5, 1, figsize=(8, 13), sharex=True)
+    titles = ["Density", "Pressure", "Velocity (x)", r"Volume fraction $\alpha_1$",
+              "Reference spacing (ASR resolution)"]
+    sph = [rho_n, p_n, u_n, alpha_n, None]
+    ext = [rE, pE, uE, aE, None]
+    for k, (ax, ttl, ss, ee) in enumerate(zip(axes, titles, sph, ext)):
+        if k < 4:
+            ax.plot(x_ref, ee, "k-", lw=1.5, label="exact")
+            ax.plot(centers[mask], ss[mask], "r.", ms=3, label="SPH-ASR")
+        else:
+            # resolution field: every particle's reference spacing vs x
+            ax.plot(data[:, COL["x"]], data[:, COL["ds"]], "b.", ms=2, label="per particle")
+            ax.set_yscale("log")
+            ax.axhline(data[:, COL["ds"]].max(), color="gray", ls=":", lw=0.8)
         ax.axvline(GW_X0 if not sod_mode else SOD_X0, color="b", ls="--", lw=0.8, alpha=0.5)
         ax.set_ylabel(ttl)
         ax.grid(True, alpha=0.3)
         ax.legend(loc="best", fontsize=8)
     axes[-1].set_xlabel("x")
-    fig.suptitle(f"Multiphase shock tube [{mode}] (t={t:.4f})")
+    fig.suptitle(f"Multiphase shock tube, particle-band ASR [{mode}] "
+                 f"(t={t:.4e}, N={data.shape[0]})")
     fig.tight_layout()
-    fig_path = os.path.join(res_dir, f"profiles_{step}.png")
+    fig_path = os.path.join(res_dir, f"profiles_t{t:.2e}_N{data.shape[0]}_step{step}.png")
     fig.savefig(fig_path, dpi=120)
     print(f"Saved {fig_path}")
     return 0 if bounded else 2

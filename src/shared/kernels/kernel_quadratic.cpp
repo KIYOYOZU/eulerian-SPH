@@ -8,8 +8,8 @@ namespace SPH
 KernelQuadratic::KernelQuadratic(Real h)
     : Kernel(h, 2.0, 2.0, "QuadraticKernel")
 {
-    factor_W_1D_ = inv_h_ / 7.0;
-    factor_W_2D_ = inv_h_ * inv_h_ / (3.0 * Pi);
+    factor_W_1D_ = 0.8 * inv_h_;
+    factor_W_2D_ = 1.6 * inv_h_ * inv_h_ / Pi;
     factor_W_3D_ = inv_h_ * inv_h_ * inv_h_ / Pi;
     setDerivativeParameters();
 }
@@ -31,14 +31,7 @@ Real KernelQuadratic::W_3D(const Real q) const
 //=================================================================================================//
 Real KernelQuadratic::dW_1D(const Real q) const
 {
-    if (q < 1.0)
-    {
-        return (-6.0 + 3.0 * pow(q, 2));
-    }
-    else
-    {
-        return pow(2.0 - q, 2) * (-1.0);
-    }
+    return 15.0 * (q - 2.0) / 32.0;
 }
 //=================================================================================================//
 Real KernelQuadratic::dW_2D(const Real q) const
@@ -48,19 +41,12 @@ Real KernelQuadratic::dW_2D(const Real q) const
 //=================================================================================================//
 Real KernelQuadratic::dW_3D(const Real q) const
 {
-    return 15.0 * (q - 2.0) / 32.0;
+    return dW_1D(q);
 }
 //=================================================================================================//
 Real KernelQuadratic::d2W_1D(const Real q) const
 {
-    if (q < 1.0)
-    {
-        return 6.0 * q;
-    }
-    else
-    {
-        return 2.0 * (2.0 - q);
-    }
+    return 15.0 / 32.0;
 }
 //=================================================================================================//
 Real KernelQuadratic::d2W_2D(const Real q) const
@@ -70,7 +56,7 @@ Real KernelQuadratic::d2W_2D(const Real q) const
 //=================================================================================================//
 Real KernelQuadratic::d2W_3D(const Real q) const
 {
-    return 15.0 / 32.0;
+    return d2W_1D(q);
 }
 //=================================================================================================//
 } // namespace SPH

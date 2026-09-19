@@ -142,15 +142,18 @@ inline std::string str(const Ini &ini, const std::string &sec, const std::string
 
 inline std::string resolvePath()
 {
+    // cwd first: each case runs from its own folder (cases/<name>/), so the
+    // config and outputs stay per-case; the source dir is the fallback for
+    // running the executable from the build tree directly
     std::error_code ec;
+    std::filesystem::path cwd = std::filesystem::current_path() / "config.ini";
+    if (std::filesystem::exists(cwd, ec) && !ec)
+        return cwd.string();
 #ifdef CASE_SOURCE_DIR
     std::filesystem::path src = std::filesystem::path(CASE_SOURCE_DIR) / "config.ini";
     if (std::filesystem::exists(src, ec) && !ec)
         return src.string();
 #endif
-    std::filesystem::path cwd = std::filesystem::current_path() / "config.ini";
-    if (std::filesystem::exists(cwd, ec) && !ec)
-        return cwd.string();
     return "config.ini";
 }
 } // namespace mp_cfg_detail

@@ -75,6 +75,10 @@ class BaseIntegrationInMultiphase : public BaseIntegration<DataDelegateInner>
     Real *Vol_, *E_, *dE_dt_, *dmass_dt_;
     Real *alpha_, *dalpha_dt_;
     Vecd *mom_, *force_, *force_prior_;
+    /** Zeroth-order gradient-bias c_i of the ASR correction; registered
+     *  zero-initialized, so it is an exact no-op unless a
+     *  ComputeGradientCorrection dynamics fills it (graded band lattices). */
+    Vecd *grad_corr_;
 };
 
 /**
@@ -103,7 +107,8 @@ class BaseIntegrationInMultiphaseForWall : public BaseIntegration<DataDelegateCo
           dalpha_dt_(this->particles_->template registerStateVariableData<Real>("VolumeFractionChangeRate")),
           mom_(this->particles_->template registerStateVariableData<Vecd>("Momentum")),
           force_(this->particles_->template registerStateVariableData<Vecd>("Force")),
-          force_prior_(this->particles_->template registerStateVariableData<Vecd>("ForcePrior"))
+          force_prior_(this->particles_->template registerStateVariableData<Vecd>("ForcePrior")),
+          grad_corr_(this->particles_->template registerStateVariableData<Vecd>("GradientCorrection"))
     {
     }
     virtual ~BaseIntegrationInMultiphaseForWall() = default;
@@ -112,6 +117,9 @@ class BaseIntegrationInMultiphaseForWall : public BaseIntegration<DataDelegateCo
     Real *Vol_, *E_, *dE_dt_, *dmass_dt_;
     Real *alpha_, *dalpha_dt_;
     Vecd *mom_, *force_, *force_prior_;
+    /** See BaseIntegrationInMultiphase; the fluid-side c_i also closes the
+     *  mirror wall stencil (cut off asymmetrically at the support radius). */
+    Vecd *grad_corr_;
 };
 
 //----------------------------------------------------------------------

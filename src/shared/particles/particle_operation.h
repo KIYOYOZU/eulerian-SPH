@@ -100,10 +100,23 @@ class RemoveRealParticle
         {
             AtomicRef<UnsignedInt> total_real_particles_ref(*total_real_particles_);
             UnsignedInt last_real_particle_index = total_real_particles_ref.fetch_sub(1) - 1;
-            while (life_status[last_real_particle_index] == 1) // to delete
+            // the removal target must never be consumed as a dead tail: the
+            // first fetch_sub already dropped its slot from the total, and
+            // consuming it again would eject one living particle from the
+            // real range without relocating it
+            while (last_real_particle_index != index_i &&
+                   life_status[last_real_particle_index] == 1) // to delete
             {
                 life_status[last_real_particle_index] = 0; // reset the life status
                 last_real_particle_index = total_real_particles_ref.fetch_sub(1) - 1;
+            }
+
+            if (last_real_particle_index == index_i)
+            {
+                // the dead particle is already the tail; the fetch_sub above
+                // completed the removal and there is nothing to relocate
+                life_status[index_i] = 0;
+                return;
             }
 
             if (index_i < last_real_particle_index)
